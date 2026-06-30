@@ -30,22 +30,53 @@ class DataSeeder:
             logger.info(f"📥 DataSeeder: {len(symbols)} symbol uchun data yuklanmoqda...")
 
             total_trades = 0
-            for i, symbol in enumerate(symbols[:50]):
+            for i, symbol in enumerate(symbols[:100]):
                 try:
                     trades = await self._fetch_recent_trades(symbol)
                     if trades:
                         total_trades += len(trades)
                         await self._process_trades(symbol, trades)
-                    if (i + 1) % 10 == 0:
-                        logger.info(f"📥 DataSeeder: {i+1}/50 symbol — {total_trades} trade")
-                    await asyncio.sleep(0.1)
-                except Exception as e:
+                    if (i + 1) % 20 == 0:
+                        logger.info(f"📥 DataSeeder: {i+1}/100 symbol — {total_trades} trade")
+                    await asyncio.sleep(0.05)
+                except Exception:
                     continue
 
-            logger.info(f"✅ DataSeeder: tayyor! {total_trades} trade yuklandi")
+            logger.info(f"✅ DataSeeder trades: {total_trades} trade yuklandi")
+
+            liq_count = await self._seed_liquidations()
+            logger.info(f"✅ DataSeeder liquidations: {liq_count} ta likvidatsiya yuklandi")
 
         except Exception as e:
             logger.error(f"DataSeeder xatolik: {e}")
+
+    async def _seed_liquidations(self):
+        try:
+            from modules.liquidation_scanner import liq_aggregator
+            count = 0
+            async with aiohttp.ClientSession() as session:
+                url = "https://fapi.binance.com/fapi/v1/allForceOrders"
+                for symbol in ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
+                               "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT",
+                               "MATICUSDT", "UNIUSDT", "LTCUSDT", "ATOMUSDT", "NEARUSDT"]:
+                    try:
+                        params = {"symbol": symbol, "limit": 100}
+                        async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                            if resp.status == 200:
+                                data = await resp.json()
+                                for order in data:
+                                    price = float(order.get("price", 0))
+                                    qty = float(order.get("origQty", 0))
+                                    usdt = price * qty
+                                    if usdt >= 5000:
+                                        count += 1
+                                await asyncio.sleep(0.1)
+                    except Exception:
+                        continue
+            return count
+        except Exception as e:
+            logger.error(f"Liquidation seed xatolik: {e}")
+            return 0
 
     async def _get_top_symbols(self):
         try:
