@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+*.db
+*.log
+*.lnk
+logs/
+data/
+backup_*/
+test_chart.png
