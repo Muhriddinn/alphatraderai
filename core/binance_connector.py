@@ -294,8 +294,8 @@ class BinanceFuturesConnector:
             logger.warning(f"Trade parse error: {e}")
 
     async def _poll_open_interest(self):
-        """Poll OI for all symbols every 30 seconds via REST"""
-        await asyncio.sleep(60)  # Bootstrap tugashini kutish
+        """Poll OI for all symbols every 60 seconds via REST"""
+        await asyncio.sleep(300)  # Bootstrap tugashini kutish (5 daqiqa)
         while self._running:
             try:
                 tasks = [
@@ -305,12 +305,12 @@ class BinanceFuturesConnector:
                 for i in range(0, len(tasks), 50):
                     batch = tasks[i:i+50]
                     await asyncio.gather(*batch, return_exceptions=True)
-                    await asyncio.sleep(0.2)
+                    await asyncio.sleep(1.0)
 
             except Exception as e:
                 logger.error(f"OI poll error: {e}")
 
-            await asyncio.sleep(30)
+            await asyncio.sleep(60)
 
     async def _fetch_oi(self, symbol: str):
         try:
@@ -495,7 +495,7 @@ class BinanceFuturesConnector:
         errors = 0
         banned = False
         total = len(self.symbols)
-        batch_size = 3
+        batch_size = 2
 
         for start in range(0, total, batch_size):
             if banned:
@@ -516,7 +516,7 @@ class BinanceFuturesConnector:
             if not banned and (start // batch_size) % 10 == 0:
                 logger.info(f"📊 Bootstrap: {start + len(batch)}/{total} yuklandi...")
             if not banned:
-                await asyncio.sleep(8.0)
+                await asyncio.sleep(30.0)
 
         if banned:
             logger.warning(f"⛔ Bootstrap to'xtatildi (IP ban). {loaded}/{total} symbol yuklandi.")

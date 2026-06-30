@@ -296,6 +296,8 @@ async def get_health():
             async with session.get("https://fapi.binance.com/fapi/v1/ping", timeout=aiohttp.ClientTimeout(total=5)) as resp:
                 if resp.status == 200:
                     components.append({"name": "BinanceAPI", "status": "ok", "detail": "Connected"})
+                elif resp.status == 418:
+                    components.append({"name": "BinanceAPI", "status": "error", "detail": "IP BANNED (418) — 24-48h kutish kerak"})
                 else:
                     components.append({"name": "BinanceAPI", "status": "error", "detail": f"HTTP {resp.status}"})
     except Exception as e:
@@ -311,7 +313,6 @@ async def get_health():
 
     # WebSocket Status
     try:
-        from core.state_manager import state_manager
         ws_count = await state_manager.get_stat("ws_messages")
         if ws_count > 0:
             components.append({"name": "WebSocket", "status": "ok", "detail": f"{ws_count} messages"})
@@ -324,7 +325,6 @@ async def get_health():
     try:
         import os
         cache_exists = os.path.exists("logs/exchange_info.json")
-        bootstrap_stat = await state_manager.get_stat("bootstrap_loaded") if hasattr(state_manager, 'get_stat') else None
         detail = f"cache={'yes' if cache_exists else 'no'}"
         components.append({"name": "Bootstrap", "status": "ok", "detail": detail})
     except Exception as e:

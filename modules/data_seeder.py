@@ -21,7 +21,7 @@ class DataSeeder:
         asyncio.create_task(self._seed_loop())
 
     async def _seed_loop(self):
-        await asyncio.sleep(120)
+        await asyncio.sleep(600)
         while self.running:
             try:
                 if self._banned:
