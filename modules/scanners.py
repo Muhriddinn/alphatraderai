@@ -363,8 +363,7 @@ class OrderBookScanner:
                 # OI ma'lumoti bor symbollarni avval skanerlash
                 symbol_oi = []
                 for sym in symbols:
-                    oi_key = f"crypto:binance:{sym}:oi_current"
-                    oi_data = state_manager._data.get(oi_key)
+                    oi_data = await state_manager._kv_get(f"crypto:binance:{sym}:oi_current")
                     oi_val = oi_data["oi_usdt"] if oi_data else 0
                     symbol_oi.append((sym, oi_val))
 

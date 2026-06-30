@@ -1661,20 +1661,17 @@ def build_short_signal_text(sig) -> str:
         lines.append(f"  {fmt_usdt(last_whale_usdt)}")
     else:
         # Global oxirgi whale — har qanday coin uchun
-        import asyncio
         import time
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                gw = state_manager._data.get("global:last_whale")
-                if gw and gw.get("usdt", 0) > 0:
-                    ago_s = time.time() - gw.get("ts", 0)
-                    ago_str = fmt_dur(int(ago_s))
-                    emoji_w = "💰" if gw["direction"] == "buy" else "💸"
-                    dir_w = "buying" if gw["direction"] == "buy" else "selling"
-                    lines.append(f"🎰 <b>Oxirgi whale:</b> #{gw['symbol'].replace('USDT','')} {emoji_w} {dir_w} — {fmt_usdt(gw['usdt'])} — {ago_str} oldin")
-                else:
-                    lines.append("🎰 <b>Whale:</b> Hali aniqlanmagan")
+            gw = state_manager._cache.get("global:last_whale")
+            if gw and gw.get("usdt", 0) > 0:
+                ago_s = time.time() - gw.get("ts", 0)
+                ago_str = fmt_dur(int(ago_s))
+                emoji_w = "💰" if gw["direction"] == "buy" else "💸"
+                dir_w = "buying" if gw["direction"] == "buy" else "selling"
+                lines.append(f"🎰 <b>Oxirgi whale:</b> #{gw['symbol'].replace('USDT','')} {emoji_w} {dir_w} — {fmt_usdt(gw['usdt'])} — {ago_str} oldin")
+            else:
+                lines.append("🎰 <b>Whale:</b> Hali aniqlanmagan")
         except Exception:
             lines.append("🎰 <b>Whale:</b> Hali aniqlanmagan")
     lines.append("")

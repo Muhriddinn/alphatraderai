@@ -25,6 +25,7 @@ from core.models import (
     OIData, FundingData, Direction
 )
 from core.state_manager import state_manager
+from core.rate_limiter import rate_limiter, retry_handler
 
 
 BINANCE_FUTURES_WS = "wss://fstream.binance.com/stream"
@@ -76,7 +77,11 @@ class BinanceFuturesConnector:
         cache_file = "logs/exchange_info.json"
         data = None
         try:
+            await rate_limiter.acquire()
             async with self._session.get(f"{BINANCE_FUTURES_REST}/fapi/v1/exchangeInfo") as resp:
+                if resp.status == 429:
+                    await retry_handler.handle_429(resp)
+                    return await self._discover_symbols()
                 if resp.status == 200:
                     data = await resp.json()
                     with open(cache_file, "w") as f:
@@ -278,8 +283,12 @@ class BinanceFuturesConnector:
 
     async def _fetch_oi(self, symbol: str):
         try:
+            await rate_limiter.acquire()
             url = f"{BINANCE_FUTURES_REST}/fapi/v1/openInterest"
             async with self._session.get(url, params={"symbol": symbol}) as resp:
+                if resp.status == 429:
+                    await retry_handler.handle_429(resp)
+                    return await self._fetch_oi(symbol)
                 if resp.status == 200:
                     data = await resp.json()
                     oi = float(data["openInterest"])
@@ -290,6 +299,7 @@ class BinanceFuturesConnector:
                     # FIX: price=0 bo'lsa REST dan narxni ol
                     if price <= 0:
                         try:
+                            await rate_limiter.acquire()
                             price_url = f"{BINANCE_FUTURES_REST}/fapi/v1/ticker/price"
                             async with self._session.get(price_url, params={"symbol": symbol}) as pr:
                                 if pr.status == 200:
@@ -332,8 +342,12 @@ class BinanceFuturesConnector:
         """Poll funding rates every 60 seconds (oldin 30s — rate limit tejash)"""
         while self._running:
             try:
+                await rate_limiter.acquire()
                 url = f"{BINANCE_FUTURES_REST}/fapi/v1/premiumIndex"
                 async with self._session.get(url) as resp:
+                    if resp.status == 429:
+                        await retry_handler.handle_429(resp)
+                        continue
                     if resp.status == 200:
                         items = await resp.json()
                         for item in items:
@@ -408,8 +422,12 @@ class BinanceFuturesConnector:
     async def get_orderbook(self, symbol: str, limit: int = 50) -> Optional[dict]:
         """Fetch order book snapshot via REST"""
         try:
+            await rate_limiter.acquire()
             url = f"{BINANCE_FUTURES_REST}/fapi/v1/depth"
             async with self._session.get(url, params={"symbol": symbol, "limit": limit}) as resp:
+                if resp.status == 429:
+                    await retry_handler.handle_429(resp)
+                    return await self.get_orderbook(symbol, limit)
                 if resp.status == 200:
                     return await resp.json()
         except Exception as e:
@@ -457,6 +475,7 @@ class BinanceFuturesConnector:
     async def _bootstrap_one(self, symbol: str) -> bool:
         """Bitta coin uchun barcha bootstrap ma'lumotini yuklash"""
         try:
+            await rate_limiter.acquire()
             overall_timeout = aiohttp.ClientTimeout(total=15)
             connector = aiohttp.TCPConnector(limit=8, force_close=True)
             async with aiohttp.ClientSession(timeout=overall_timeout, connector=connector) as s:
@@ -511,24 +530,16 @@ class BinanceFuturesConnector:
                 next_funding = funding_data.get("nextFundingTime", 0)
 
                 # Volume windows (scanner uchun)
-                from collections import defaultdict
-                from core.state_manager import state_manager as sm
-                key = f"binance:{symbol}"
-                volume_windows = getattr(sm, "_volume_data", None)
-                if volume_windows is None:
-                    volume_windows = {}
-                    sm._volume_data = volume_windows
-                if key not in volume_windows:
-                    volume_windows[key] = []
-                window = volume_windows[key]
-                now_ts = datetime.utcnow().timestamp()
+                key = f"binance:{symbol}:volume_window"
+                now_ts = time.time()
+                window = []
                 for k in k1m:
                     close_ts = float(k[6]) / 1000
                     quote_vol = float(k[7])
                     if quote_vol > 0:
                         window.append({"usdt": quote_vol, "ts": close_ts})
-                # Eski ma'lumotlarni tozalash
-                window[:] = [v for v in window if v["ts"] >= now_ts - 14400]
+                window = [v for v in window if v["ts"] >= now_ts - 14400]
+                await state_manager.set_volume_data(key, window)
 
                 # Multi-timeframe volumes (extra ga saqlaymiz)
                 extra = {
@@ -576,7 +587,7 @@ class BinanceFuturesConnector:
                 extra["ob_imbalance"] = round(total_buy / total_sell, 2) if total_sell > 0 else 1.0
 
                 # Bootstrap extra ma'lumotini state_manager ga saqlaymiz
-                state_manager._data[f"bootstrap:{symbol}"] = extra
+                await state_manager.set_bootstrap(symbol, extra)
 
                 return True
         except Exception as e:
@@ -586,9 +597,13 @@ class BinanceFuturesConnector:
     async def get_klines(self, symbol: str, interval: str = "1m", limit: int = 30) -> list:
         """Fetch klines/candlestick data for volume baseline"""
         try:
+            await rate_limiter.acquire()
             url = f"{BINANCE_FUTURES_REST}/fapi/v1/klines"
             params = {"symbol": symbol, "interval": interval, "limit": limit}
             async with self._session.get(url, params=params) as resp:
+                if resp.status == 429:
+                    await retry_handler.handle_429(resp)
+                    return await self.get_klines(symbol, interval, limit)
                 if resp.status == 200:
                     return await resp.json()
         except Exception as e:

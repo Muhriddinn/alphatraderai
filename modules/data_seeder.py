@@ -6,6 +6,7 @@ import asyncio
 import aiohttp
 import time
 from loguru import logger
+from core.rate_limiter import rate_limiter, retry_handler
 
 MAX_SEED_SYMBOLS = 50
 
@@ -66,9 +67,13 @@ class DataSeeder:
 
     async def _get_all_symbols(self):
         try:
+            await rate_limiter.acquire()
             async with aiohttp.ClientSession() as session:
                 url = "https://fapi.binance.com/fapi/v1/ticker/24hr"
                 async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 429:
+                        await retry_handler.handle_429(resp)
+                        return await self._get_all_symbols()
                     if resp.status == 200:
                         data = await resp.json()
                         usdt_pairs = [d for d in data if d["symbol"].endswith("USDT")]
@@ -80,6 +85,7 @@ class DataSeeder:
 
     async def _fetch_recent_trades(self, symbol):
         try:
+            await rate_limiter.acquire()
             async with aiohttp.ClientSession() as session:
                 url = "https://fapi.binance.com/fapi/v1/trades"
                 params = {"symbol": symbol, "limit": 1000}
@@ -122,8 +128,12 @@ class DataSeeder:
 
                 for symbol in symbols:
                     try:
+                        await rate_limiter.acquire()
                         params = {"symbol": symbol, "limit": 1000, "startTime": start_ms}
                         async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                            if resp.status == 429:
+                                await retry_handler.handle_429(resp)
+                                continue
                             if resp.status == 200:
                                 data = await resp.json()
                                 for order in data:
@@ -148,8 +158,12 @@ class DataSeeder:
 
                 for symbol in symbols:
                     try:
+                        await rate_limiter.acquire()
                         params = {"symbol": symbol, "interval": "1h", "limit": 720}
                         async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                            if resp.status == 429:
+                                await retry_handler.handle_429(resp)
+                                continue
                             if resp.status == 200:
                                 data = await resp.json()
                                 count += len(data)
