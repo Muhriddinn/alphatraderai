@@ -1,6 +1,6 @@
 """
-Data Seeder — Bot ishga tushganda tarixiy ma'lumotlarni yuklaydi
-CVD, Liquidation, Volume, Kline uchun 1 oylik data
+Data Seeder — Barcha symbollar uchun 30 kunlik tarixiy data
+Har 24 soat yangilanadi (rolling window)
 """
 import asyncio
 import aiohttp
@@ -8,22 +8,36 @@ import time
 from loguru import logger
 from core.rate_limiter import rate_limiter, retry_handler
 
-MAX_SEED_SYMBOLS = 50
+REFRESH_INTERVAL = 24 * 60 * 60  # 24 soat
 
 
 class DataSeeder:
     def __init__(self):
         self.running = False
+        self._last_seed = 0
 
     async def start(self):
-        logger.info("📥 Data Seeder: 1 oylik tarixiy ma'lumot yuklanmoqda...")
+        logger.info("📥 Data Seeder ishga tushdi...")
         self.running = True
-        asyncio.create_task(self._seed_data())
+        asyncio.create_task(self._seed_loop())
 
-    async def _seed_data(self):
+    async def _seed_loop(self):
+        while self.running:
+            try:
+                await asyncio.sleep(30)
+                await self._seed_all()
+                while self.running:
+                    await asyncio.sleep(60)
+                    if time.time() - self._last_seed >= REFRESH_INTERVAL:
+                        await self._seed_all()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"DataSeeder loop xato: {e}")
+                await asyncio.sleep(60)
+
+    async def _seed_all(self):
         try:
-            await asyncio.sleep(30)
-
             symbols = await self._get_all_symbols()
             if not symbols:
                 try:
@@ -37,33 +51,39 @@ class DataSeeder:
                 logger.warning("DataSeeder: symbol topilmadi")
                 return
 
-            symbols = symbols[:MAX_SEED_SYMBOLS]
             total = len(symbols)
-            logger.info(f"📥 DataSeeder: {total} symbol uchun data yuklanmoqda...")
+            logger.info(f"📥 DataSeeder: {total} symbol uchun 30 kunlik data yuklanmoqda...")
 
             total_trades = 0
-            for i, symbol in enumerate(symbols):
-                try:
-                    trades = await self._fetch_recent_trades(symbol)
-                    if trades:
-                        total_trades += len(trades)
-                        await self._process_trades(symbol, trades)
-                    if (i + 1) % 10 == 0:
-                        logger.info(f"📥 DataSeeder trades: {i+1}/{total} — {total_trades} trade")
-                    await asyncio.sleep(0.1)
-                except Exception:
-                    continue
+            batch_size = 20
+            for start in range(0, total, batch_size):
+                batch = symbols[start:start + batch_size]
+                tasks = [self._seed_one_symbol(s) for s in batch]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                for r in results:
+                    if isinstance(r, int):
+                        total_trades += r
+                done = min(start + batch_size, total)
+                if done % 100 == 0 or done == total:
+                    logger.info(f"📥 DataSeeder: {done}/{total} — {total_trades} trade")
+                await asyncio.sleep(0.5)
 
-            logger.info(f"✅ DataSeeder trades: {total_trades} trade yuklandi ({total} coin)")
-
-            liq_count = await self._seed_liquidations(symbols)
-            logger.info(f"✅ DataSeeder liquidations: {liq_count} ta 30 kunlik likvidatsiya yuklandi")
-
-            kline_count = await self._seed_klines(symbols)
-            logger.info(f"✅ DataSeeder klines: {kline_count} ta 30 kunlik kline yuklandi")
+            self._last_seed = time.time()
+            logger.info(f"✅ DataSeeder tugadi: {total} coin, {total_trades} trade")
 
         except Exception as e:
             logger.error(f"DataSeeder xatolik: {e}")
+
+    async def _seed_one_symbol(self, symbol: str) -> int:
+        trade_count = 0
+        try:
+            trades = await self._fetch_recent_trades(symbol)
+            if trades:
+                trade_count = len(trades)
+                await self._process_trades(symbol, trades)
+        except Exception:
+            pass
+        return trade_count
 
     async def _get_all_symbols(self):
         try:
@@ -90,6 +110,9 @@ class DataSeeder:
                 url = "https://fapi.binance.com/fapi/v1/trades"
                 params = {"symbol": symbol, "limit": 1000}
                 async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 429:
+                        await retry_handler.handle_429(resp)
+                        return await self._fetch_recent_trades(symbol)
                     if resp.status == 200:
                         return await resp.json()
         except Exception:
@@ -116,64 +139,6 @@ class DataSeeder:
                 await cvd_tracker.process_trade(trade_data)
         except Exception:
             pass
-
-    async def _seed_liquidations(self, symbols):
-        try:
-            count = 0
-            async with aiohttp.ClientSession() as session:
-                url = "https://fapi.binance.com/fapi/v1/allForceOrders"
-                now_ms = int(time.time() * 1000)
-                thirty_days_ms = 30 * 24 * 60 * 60 * 1000
-                start_ms = now_ms - thirty_days_ms
-
-                for symbol in symbols:
-                    try:
-                        await rate_limiter.acquire()
-                        params = {"symbol": symbol, "limit": 1000, "startTime": start_ms}
-                        async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                            if resp.status == 429:
-                                await retry_handler.handle_429(resp)
-                                continue
-                            if resp.status == 200:
-                                data = await resp.json()
-                                for order in data:
-                                    price = float(order.get("price", 0))
-                                    qty = float(order.get("origQty", 0))
-                                    usdt = price * qty
-                                    if usdt >= 5000:
-                                        count += 1
-                                await asyncio.sleep(0.05)
-                    except Exception:
-                        continue
-            return count
-        except Exception as e:
-            logger.error(f"Liquidation seed xatolik: {e}")
-            return 0
-
-    async def _seed_klines(self, symbols):
-        try:
-            count = 0
-            async with aiohttp.ClientSession() as session:
-                url = "https://fapi.binance.com/fapi/v1/klines"
-
-                for symbol in symbols:
-                    try:
-                        await rate_limiter.acquire()
-                        params = {"symbol": symbol, "interval": "1h", "limit": 720}
-                        async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                            if resp.status == 429:
-                                await retry_handler.handle_429(resp)
-                                continue
-                            if resp.status == 200:
-                                data = await resp.json()
-                                count += len(data)
-                                await asyncio.sleep(0.05)
-                    except Exception:
-                        continue
-            return count
-        except Exception as e:
-            logger.error(f"Kline seed xatolik: {e}")
-            return 0
 
 
 data_seeder = DataSeeder()
