@@ -305,11 +305,10 @@ class BinanceFuturesConnector:
             await rate_limiter.acquire(weight=1)
             url = f"{BINANCE_FUTURES_REST}/fapi/v1/openInterest"
             async with self._session.get(url, params={"symbol": symbol}) as resp:
-                if resp.status in (418, 429):
-                    if resp.status == 418:
-                        await asyncio.sleep(120)
-                    else:
-                        await retry_handler.handle_429(resp)
+                if resp.status == 418:
+                    return None
+                if resp.status == 429:
+                    await retry_handler.handle_429(resp)
                     return await self._fetch_oi(symbol)
                 if resp.status == 200:
                     data = await resp.json()
@@ -361,15 +360,15 @@ class BinanceFuturesConnector:
             logger.debug(f"OI fetch failed {symbol}: {e}")
 
     async def _poll_funding_rates(self):
-        """Poll funding rates every 60 seconds (oldin 30s — rate limit tejash)"""
+        """Poll funding rates every 60 seconds"""
         while self._running:
             try:
                 await rate_limiter.acquire(weight=1)
                 url = f"{BINANCE_FUTURES_REST}/fapi/v1/premiumIndex"
                 async with self._session.get(url) as resp:
                     if resp.status == 418:
-                        logger.error("⛔ Funding poll: IP BAN (418)")
-                        await asyncio.sleep(120)
+                        logger.warning("⛔ Funding poll: IP BAN — 60 daqiqa kutish")
+                        await asyncio.sleep(3600)
                         continue
                     if resp.status == 429:
                         await retry_handler.handle_429(resp)
@@ -465,49 +464,50 @@ class BinanceFuturesConnector:
 
     async def _load_volume_baselines(self):
         """
-        Ishga tushganda barcha symbollar uchun to'liq bootstrap.
-        1. Multi-timeframe klines (1m, 5m, 15m, 1h, 4h)
-        2. OI + Funding + Ticker (24h)
-        3. Liquidatsiya tarixi
-        4. Taker ratio tarixi
+        Bootstrap — faqat birinchi ishga tushirishda.
+        Agar 418 ban bo'lsa — to'xtatiladi, WebSocket yetarli.
         """
         logger.info("📊 Bootstrap: barcha coinlar uchun ma'lumot yuklanmoqda...")
         loaded = 0
         errors = 0
+        banned = False
         total = len(self.symbols)
-        # Batch: 3 ta coin — 3 × 51 = 153 weight/batch
-        # 8s delay → 153/8 × 60 = 1148 weight/min (< 2000 limit)
         batch_size = 3
 
         for start in range(0, total, batch_size):
+            if banned:
+                break
             batch = self.symbols[start:start + batch_size]
-            tasks = []
-            for symbol in batch:
-                tasks.append(self._bootstrap_one(symbol))
+            tasks = [self._bootstrap_one(s) for s in batch]
             results = await asyncio.gather(*tasks, return_exceptions=True)
             for r in results:
                 if r is True:
                     loaded += 1
+                elif r == "BANNED":
+                    banned = True
+                    break
                 elif isinstance(r, Exception):
                     errors += 1
-                    if errors <= 5:
-                        logger.debug(f"Bootstrap error: {r}")
                 else:
                     errors += 1
-            if (start // batch_size) % 10 == 0:
+            if not banned and (start // batch_size) % 10 == 0:
                 logger.info(f"📊 Bootstrap: {start + len(batch)}/{total} yuklandi...")
-            await asyncio.sleep(8.0)
+            if not banned:
+                await asyncio.sleep(8.0)
 
-        logger.info(f"✅ Bootstrap tugadi: {loaded}/{total} symbol ({errors} errors)")
+        if banned:
+            logger.warning(f"⛔ Bootstrap to'xtatildi (IP ban). {loaded}/{total} symbol yuklandi.")
+            logger.info("ℹ️ Bot WebSocket orqali ishlaydi — REST kerak emas!")
+        else:
+            logger.info(f"✅ Bootstrap tugadi: {loaded}/{total} symbol ({errors} errors)")
 
-    async def _bootstrap_one(self, symbol: str) -> bool:
+    async def _bootstrap_one(self, symbol: str):
         """Bitta coin uchun barcha bootstrap ma'lumotini yuklash"""
         try:
             await rate_limiter.acquire(weight=50)
             overall_timeout = aiohttp.ClientTimeout(total=15)
             connector = aiohttp.TCPConnector(limit=8, force_close=True)
             async with aiohttp.ClientSession(timeout=overall_timeout, connector=connector) as s:
-                # Parallel so'rovlar
                 urls = {
                     "ticker": f"{BINANCE_FUTURES_REST}/fapi/v1/ticker/24hr?symbol={symbol}",
                     "funding": f"{BINANCE_FUTURES_REST}/fapi/v1/premiumIndex?symbol={symbol}",
@@ -522,9 +522,7 @@ class BinanceFuturesConnector:
                     try:
                         async with s.get(url, timeout=aiohttp.ClientTimeout(total=10)) as r:
                             if r.status == 418:
-                                logger.warning(f"418 ban on {name} for {symbol}")
-                                await asyncio.sleep(120)
-                                return (name, None)
+                                return ("BANNED", None)
                             if r.status == 200:
                                 return (name, await r.json())
                     except: pass
@@ -533,6 +531,9 @@ class BinanceFuturesConnector:
                 task_list = [fetch(name, url) for name, url in urls.items()]
                 results = await asyncio.gather(*task_list)
                 res = dict(results)
+
+                if "BANNED" in res:
+                    return "BANNED"
 
                 ticker = res.get("ticker") or {}
                 funding_data = res.get("funding") or {}
