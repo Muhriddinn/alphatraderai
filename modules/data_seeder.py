@@ -24,17 +24,46 @@ class DataSeeder:
     async def _seed_loop(self):
         while self.running:
             try:
-                await asyncio.sleep(30)
-                await self._seed_all()
-                while self.running:
-                    await asyncio.sleep(60)
-                    if time.time() - self._last_seed >= REFRESH_INTERVAL:
-                        await self._seed_all()
+                await asyncio.sleep(60)
+                symbols = await self._get_all_symbols()
+                if not symbols:
+                    try:
+                        from core.binance_connector import connector
+                        symbols = getattr(connector, "symbols", [])
+                        if symbols:
+                            logger.info(f"📥 DataSeeder: connector dan {len(symbols)} symbol olindi")
+                    except Exception:
+                        pass
+                if not symbols:
+                    logger.warning("DataSeeder: symbol topilmadi — 5 daqiqada qayta uriniladi")
+                    await asyncio.sleep(300)
+                    continue
+
+                total = len(symbols)
+                logger.info(f"📥 DataSeeder: {total} symbol uchun data yuklanmoqda...")
+
+                total_trades = 0
+                batch_size = 20
+                for start in range(0, total, batch_size):
+                    batch = symbols[start:start + batch_size]
+                    tasks = [self._seed_one_symbol(s) for s in batch]
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    for r in results:
+                        if isinstance(r, int):
+                            total_trades += r
+                    done = min(start + batch_size, total)
+                    if done % 100 == 0 or done == total:
+                        logger.info(f"📥 DataSeeder: {done}/{total} — {total_trades} trade")
+                    await asyncio.sleep(0.5)
+
+                self._last_seed = time.time()
+                logger.info(f"✅ DataSeeder tugadi: {total} coin, {total_trades} trade")
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"DataSeeder loop xato: {e}")
-                await asyncio.sleep(60)
+                await asyncio.sleep(300)
 
     async def _seed_all(self):
         try:
@@ -92,9 +121,8 @@ class DataSeeder:
                 url = "https://fapi.binance.com/fapi/v1/ticker/24hr"
                 async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                     if resp.status == 418:
-                        logger.error("⛔ DataSeeder: IP BAN (418) — 120 soniya kutish")
-                        await asyncio.sleep(120)
-                        return await self._get_all_symbols()
+                        logger.warning("⛔ DataSeeder: IP BAN — connector dan symbol olinadi")
+                        return []
                     if resp.status == 429:
                         await retry_handler.handle_429(resp)
                         return await self._get_all_symbols()
