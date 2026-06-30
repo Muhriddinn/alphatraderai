@@ -309,4 +309,25 @@ async def get_health():
     except Exception as e:
         components.append({"name": "RateLimiter", "status": "error", "detail": str(e)})
 
+    # WebSocket Status
+    try:
+        from core.state_manager import state_manager
+        ws_count = await state_manager.get_stat("ws_messages")
+        if ws_count > 0:
+            components.append({"name": "WebSocket", "status": "ok", "detail": f"{ws_count} messages"})
+        else:
+            components.append({"name": "WebSocket", "status": "warning", "detail": "0 messages — WS may not be connected"})
+    except Exception as e:
+        components.append({"name": "WebSocket", "status": "error", "detail": str(e)})
+
+    # Bootstrap Status
+    try:
+        import os
+        cache_exists = os.path.exists("logs/exchange_info.json")
+        bootstrap_stat = await state_manager.get_stat("bootstrap_loaded") if hasattr(state_manager, 'get_stat') else None
+        detail = f"cache={'yes' if cache_exists else 'no'}"
+        components.append({"name": "Bootstrap", "status": "ok", "detail": detail})
+    except Exception as e:
+        pass
+
     return {"components": components, "timestamp": datetime.utcnow().isoformat()}

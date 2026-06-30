@@ -9,6 +9,7 @@ Tuzatishlar:
 4. OI poll: batching yaxshilandi
 """
 import asyncio
+import time
 import orjson
 import aiohttp
 import websockets
@@ -54,12 +55,12 @@ class BinanceFuturesConnector:
 
         await self._discover_symbols()
 
-        asyncio.create_task(self._stream_mark_price())
-        asyncio.create_task(self._stream_liquidations())
-        asyncio.create_task(self._stream_trades_chunked())
-        asyncio.create_task(self._poll_open_interest())
-        asyncio.create_task(self._poll_funding_rates())
-        asyncio.create_task(self._load_volume_baselines())
+        self._ws_tasks.append(asyncio.create_task(self._stream_mark_price()))
+        self._ws_tasks.append(asyncio.create_task(self._stream_liquidations()))
+        self._ws_tasks.append(asyncio.create_task(self._stream_trades_chunked()))
+        self._ws_tasks.append(asyncio.create_task(self._poll_open_interest()))
+        self._ws_tasks.append(asyncio.create_task(self._poll_funding_rates()))
+        self._ws_tasks.append(asyncio.create_task(self._load_volume_baselines()))
 
         logger.info(f"✅ Binance Futures connector started | {len(self.symbols)} symbols")
 
@@ -136,6 +137,8 @@ class BinanceFuturesConnector:
     async def _stream_liquidations(self):
         """Subscribe to all-market liquidation orders stream."""
         url = f"{BINANCE_FUTURES_WS}?streams=!forceOrder@arr"
+        retry_count = 0
+        base_delay = settings.ws_reconnect_delay
 
         while self._running:
             try:
@@ -143,8 +146,10 @@ class BinanceFuturesConnector:
                     url,
                     ping_interval=20,
                     ping_timeout=10,
-                    close_timeout=5
+                    close_timeout=5,
+                    max_size=10 * 1024 * 1024
                 ) as ws:
+                    retry_count = 0
                     logger.info("🔌 Liquidation stream connected")
                     async for raw in ws:
                         if not self._running:
@@ -153,9 +158,11 @@ class BinanceFuturesConnector:
                         await state_manager.increment_stat("ws_messages")
 
             except Exception as e:
-                logger.warning(f"Liquidation WS disconnected: {e}")
+                retry_count += 1
+                delay = min(base_delay * (2 ** min(retry_count, 6)), 300)
+                logger.warning(f"Liquidation WS disconnected (retry {retry_count}, {delay}s): {e}")
                 if self._running:
-                    await asyncio.sleep(settings.ws_reconnect_delay)
+                    await asyncio.sleep(delay)
 
     async def _handle_liquidation(self, data: dict):
         try:
@@ -194,8 +201,8 @@ class BinanceFuturesConnector:
             logger.debug(f"Liquidation parse error: {e}")
 
     async def _stream_trades_chunked(self):
-        """Stream aggTrades for all symbols in chunks of 200."""
-        chunk_size = 200
+        """Stream aggTrades for all symbols in chunks of 150."""
+        chunk_size = 150
         chunks = [
             self.symbols[i:i + chunk_size]
             for i in range(0, len(self.symbols), chunk_size)
@@ -210,6 +217,8 @@ class BinanceFuturesConnector:
     async def _stream_trades_chunk(self, symbols: list[str], chunk_id: int):
         streams = "/".join(f"{s.lower()}@aggTrade" for s in symbols)
         url = f"{BINANCE_FUTURES_WS}?streams={streams}"
+        retry_count = 0
+        base_delay = settings.ws_reconnect_delay
 
         while self._running:
             try:
@@ -220,6 +229,7 @@ class BinanceFuturesConnector:
                     close_timeout=5,
                     max_size=10 * 1024 * 1024
                 ) as ws:
+                    retry_count = 0
                     logger.info(f"🔌 Trade stream chunk {chunk_id} connected ({len(symbols)} symbols)")
                     async for raw in ws:
                         if not self._running:
@@ -228,9 +238,11 @@ class BinanceFuturesConnector:
                         await self._handle_trade(orjson.loads(raw))
 
             except Exception as e:
-                logger.warning(f"Trade stream {chunk_id} disconnected: {e}")
+                retry_count += 1
+                delay = min(base_delay * (2 ** min(retry_count, 6)), 300)
+                logger.warning(f"Trade stream {chunk_id} disconnected (retry {retry_count}, {delay}s): {e}")
                 if self._running:
-                    await asyncio.sleep(settings.ws_reconnect_delay)
+                    await asyncio.sleep(delay)
 
     async def _handle_trade(self, data: dict):
         try:
@@ -414,10 +426,19 @@ class BinanceFuturesConnector:
         To'g'ri kod: price_tracker.update_price() ham chaqiriladi
         """
         url = f"{BINANCE_FUTURES_WS}?streams=!markPrice@arr@1s"
+        retry_count = 0
+        base_delay = settings.ws_reconnect_delay
 
         while self._running:
             try:
-                async with websockets.connect(url, ping_interval=20) as ws:
+                async with websockets.connect(
+                    url,
+                    ping_interval=20,
+                    ping_timeout=10,
+                    close_timeout=5,
+                    max_size=10 * 1024 * 1024
+                ) as ws:
+                    retry_count = 0
                     logger.info("🔌 Mark price stream connected")
                     async for raw in ws:
                         if not self._running:
@@ -440,9 +461,11 @@ class BinanceFuturesConnector:
                                 price_tracker.update_price(symbol, price)
 
             except Exception as e:
-                logger.warning(f"Mark price stream disconnected: {e}")
+                retry_count += 1
+                delay = min(base_delay * (2 ** min(retry_count, 6)), 300)
+                logger.warning(f"Mark price stream disconnected (retry {retry_count}, {delay}s): {e}")
                 if self._running:
-                    await asyncio.sleep(settings.ws_reconnect_delay)
+                    await asyncio.sleep(delay)
 
     async def get_orderbook(self, symbol: str, limit: int = 50) -> Optional[dict]:
         """Fetch order book snapshot via REST"""
