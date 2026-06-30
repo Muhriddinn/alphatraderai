@@ -87,7 +87,7 @@ class DataSeeder:
 
     async def _get_all_symbols(self):
         try:
-            await rate_limiter.acquire()
+            await rate_limiter.acquire(weight=40)
             async with aiohttp.ClientSession() as session:
                 url = "https://fapi.binance.com/fapi/v1/ticker/24hr"
                 async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
@@ -109,7 +109,7 @@ class DataSeeder:
 
     async def _fetch_recent_trades(self, symbol):
         try:
-            await rate_limiter.acquire()
+            await rate_limiter.acquire(weight=5)
             async with aiohttp.ClientSession() as session:
                 url = "https://fapi.binance.com/fapi/v1/trades"
                 params = {"symbol": symbol, "limit": 1000}

@@ -289,4 +289,24 @@ async def get_health():
     except Exception as e:
         components.append({"name": "SQLite", "status": "error", "detail": str(e)})
 
+    # Binance API
+    try:
+        import aiohttp
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://fapi.binance.com/fapi/v1/ping", timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                if resp.status == 200:
+                    components.append({"name": "BinanceAPI", "status": "ok", "detail": "Connected"})
+                else:
+                    components.append({"name": "BinanceAPI", "status": "error", "detail": f"HTTP {resp.status}"})
+    except Exception as e:
+        components.append({"name": "BinanceAPI", "status": "error", "detail": str(e)})
+
+    # Rate Limiter Stats
+    try:
+        from core.rate_limiter import rate_limiter
+        stats = rate_limiter.get_stats()
+        components.append({"name": "RateLimiter", "status": "ok", "detail": f"{stats['weight_per_min']}/{stats['max_weight_per_min']} weight"})
+    except Exception as e:
+        components.append({"name": "RateLimiter", "status": "error", "detail": str(e)})
+
     return {"components": components, "timestamp": datetime.utcnow().isoformat()}

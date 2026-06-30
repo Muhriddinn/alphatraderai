@@ -79,7 +79,7 @@ class BinanceFuturesConnector:
 
         for attempt in range(3):
             try:
-                await rate_limiter.acquire()
+                await rate_limiter.acquire(weight=1)
                 timeout = aiohttp.ClientTimeout(total=15)
                 async with self._session.get(
                     f"{BINANCE_FUTURES_REST}/fapi/v1/exchangeInfo",
@@ -302,7 +302,7 @@ class BinanceFuturesConnector:
 
     async def _fetch_oi(self, symbol: str):
         try:
-            await rate_limiter.acquire()
+            await rate_limiter.acquire(weight=1)
             url = f"{BINANCE_FUTURES_REST}/fapi/v1/openInterest"
             async with self._session.get(url, params={"symbol": symbol}) as resp:
                 if resp.status in (418, 429):
@@ -321,7 +321,7 @@ class BinanceFuturesConnector:
                     # FIX: price=0 bo'lsa REST dan narxni ol
                     if price <= 0:
                         try:
-                            await rate_limiter.acquire()
+                            await rate_limiter.acquire(weight=1)
                             price_url = f"{BINANCE_FUTURES_REST}/fapi/v1/ticker/price"
                             async with self._session.get(price_url, params={"symbol": symbol}) as pr:
                                 if pr.status == 200:
@@ -364,7 +364,7 @@ class BinanceFuturesConnector:
         """Poll funding rates every 60 seconds (oldin 30s — rate limit tejash)"""
         while self._running:
             try:
-                await rate_limiter.acquire()
+                await rate_limiter.acquire(weight=1)
                 url = f"{BINANCE_FUTURES_REST}/fapi/v1/premiumIndex"
                 async with self._session.get(url) as resp:
                     if resp.status == 418:
@@ -448,7 +448,7 @@ class BinanceFuturesConnector:
     async def get_orderbook(self, symbol: str, limit: int = 50) -> Optional[dict]:
         """Fetch order book snapshot via REST"""
         try:
-            await rate_limiter.acquire()
+            await rate_limiter.acquire(weight=5)
             url = f"{BINANCE_FUTURES_REST}/fapi/v1/depth"
             async with self._session.get(url, params={"symbol": symbol, "limit": limit}) as resp:
                 if resp.status in (418, 429):
@@ -502,7 +502,7 @@ class BinanceFuturesConnector:
     async def _bootstrap_one(self, symbol: str) -> bool:
         """Bitta coin uchun barcha bootstrap ma'lumotini yuklash"""
         try:
-            await rate_limiter.acquire()
+            await rate_limiter.acquire(weight=50)
             overall_timeout = aiohttp.ClientTimeout(total=15)
             connector = aiohttp.TCPConnector(limit=8, force_close=True)
             async with aiohttp.ClientSession(timeout=overall_timeout, connector=connector) as s:
@@ -628,7 +628,7 @@ class BinanceFuturesConnector:
     async def get_klines(self, symbol: str, interval: str = "1m", limit: int = 30) -> list:
         """Fetch klines/candlestick data for volume baseline"""
         try:
-            await rate_limiter.acquire()
+            await rate_limiter.acquire(weight=1)
             url = f"{BINANCE_FUTURES_REST}/fapi/v1/klines"
             params = {"symbol": symbol, "interval": interval, "limit": limit}
             async with self._session.get(url, params=params) as resp:
