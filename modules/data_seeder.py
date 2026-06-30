@@ -7,6 +7,8 @@ import aiohttp
 import time
 from loguru import logger
 
+MAX_SEED_SYMBOLS = 50
+
 
 class DataSeeder:
     def __init__(self):
@@ -23,9 +25,18 @@ class DataSeeder:
 
             symbols = await self._get_all_symbols()
             if not symbols:
+                try:
+                    from core.binance_connector import connector
+                    symbols = getattr(connector, "symbols", [])
+                    if symbols:
+                        logger.info(f"📥 DataSeeder: connector dan {len(symbols)} symbol olindi")
+                except Exception:
+                    pass
+            if not symbols:
                 logger.warning("DataSeeder: symbol topilmadi")
                 return
 
+            symbols = symbols[:MAX_SEED_SYMBOLS]
             total = len(symbols)
             logger.info(f"📥 DataSeeder: {total} symbol uchun data yuklanmoqda...")
 
@@ -36,9 +47,9 @@ class DataSeeder:
                     if trades:
                         total_trades += len(trades)
                         await self._process_trades(symbol, trades)
-                    if (i + 1) % 50 == 0:
+                    if (i + 1) % 10 == 0:
                         logger.info(f"📥 DataSeeder trades: {i+1}/{total} — {total_trades} trade")
-                    await asyncio.sleep(0.05)
+                    await asyncio.sleep(0.1)
                 except Exception:
                     continue
 

@@ -71,24 +71,22 @@ class BinanceFuturesConnector:
 
     async def _discover_symbols(self):
         """Fetch all active USDT perpetual futures (with file cache)"""
+        import os, json
+        os.makedirs("logs", exist_ok=True)
         cache_file = "logs/exchange_info.json"
         data = None
-        # Try loading from API
         try:
             async with self._session.get(f"{BINANCE_FUTURES_REST}/fapi/v1/exchangeInfo") as resp:
                 if resp.status == 200:
                     data = await resp.json()
-                    import json
                     with open(cache_file, "w") as f:
                         json.dump(data, f)
                     logger.info("📥 exchangeInfo cached to file")
         except Exception as e:
             logger.warning(f"exchangeInfo API xato: {e}")
 
-        # Fallback: cached file
         if data is None:
             try:
-                import json
                 with open(cache_file, "r") as f:
                     data = json.load(f)
                 logger.info("📂 exchangeInfo loaded from cache")
