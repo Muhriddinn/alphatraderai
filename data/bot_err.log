@@ -1,0 +1,22 @@
+No error handlers are registered, logging exception.
+Traceback (most recent call last):
+  File "C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\site-packages\telegram\ext\_application.py", line 1325, in process_update
+    await coroutine
+  File "C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\site-packages\telegram\ext\_handlers\basehandler.py", line 157, in handle_update
+    return await self.callback(update, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\18+06+2026\bot\telegram_bot.py", line 674, in _cmd_mlstats
+    f"  Jami yozuvlar: {cache['total_entries']}\n"
+                        ~~~~~^^^^^^^^^^^^^^^^^
+KeyError: 'total_entries'
+ror 10048] обычно разрешается только одно использование адреса сокета (протокол/сетевой адрес/порт)
+Traceback (most recent call last):
+  File "C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\site-packages\loguru\_handler.py", line 315, in _queued_writer
+    self._sink.write(message)
+  File "C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\site-packages\loguru\_simple_sinks.py", line 16, in write
+    self._stream.write(message)
+  File "C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f680' in position 59: character maps to <undefined>
+--- End of logging error ---

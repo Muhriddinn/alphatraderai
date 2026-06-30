@@ -1,0 +1,283 @@
+╔══════════════════════════════════════════════════════════╗
+║         ALPHATRADERAI — VIRTUAL SERVERGA O'RNATISH       ║
+║                   QO'LLANMA (1 OYLIK)                   ║
+╚══════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1-QADAM: VIRTUAL SERVER SOTIB OLISH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tavsiya etilgan serverlar (arzon va ishonchli):
+  • Oracle Cloud — BEPUL 1 oy (Free Tier) ✅
+  • AWS Lightsail — $3.5/oy
+  • DigitalOcean — $4/oy
+  • Hetzner — $4.5/oy
+
+Oracle Cloud BEPUL olish (tavsiya etiladi):
+  1. https://cloud.oracle.com/free ga boring
+  2. "Start for Free" bosing
+  3. Ro'yxatdan o'ting (email + telefon)
+  4. "Create a VM Instance" bosing
+  5. Shape: VM.Standard.E2.1.Micro (FREE)
+  6. Image: Ubuntu 22.04
+  7. SSH key yarating (yoki oldingi bor)
+  8. "Create" bosing
+  9. IP address ni yozib oling (masalan: 123.45.67.89)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2-QADAM: SERVERGA ULANISH (Windows uchun)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. PuTTY ni yuklab oling: https://www.putty.org/
+2. PuTTY ni oching
+3. Host Name: 123.45.67.89 (sizning IP)
+4. Port: 22
+5. "Open" bosing
+6. Username: ubuntu (yoki oracle)
+7. Password: siz yaratgan (yoki SSH key)
+
+Yoki Windows PowerShell:
+  ssh ubuntu@123.45.67.89
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3-QADAM: SERVERNI SOZLASH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Serverga kirganingizdan keyin:
+
+# Yangilash
+sudo apt update && sudo apt upgrade -y
+
+# Python o'rnatish
+sudo apt install python3 python3-pip python3-venv -y
+
+# Kerakli kutubxonalar
+sudo apt install libgl1-mesa-glx libglib2.0-0 -y
+
+# Papka yaratish
+mkdir -p ~/ALPHATRADERAI
+cd ~/ALPHATRADERAI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4-QADAM: BOTNI SERVERGA KO'CHIRISH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+USUL A: WinSCP orqali (oson)
+  1. WinSCP ni yuklab oling: https://winscp.net/
+  2. hostname: 123.45.67.89
+  3. username: ubuntu
+  4. password: sizning parol
+  5. Login bosing
+  6. Chap tomon: C:\ALPHATRADERAI (sizning kompyuter)
+  7. O'ng tomon: /home/ubuntu/ALPHATRADERAI (server)
+  8. Hamma fayllarni o'ng tomonga torting
+
+USUL B: SCP buyrug'i (PowerShell):
+  cd C:\ALPHATRADERAI
+  scp -r ./* ubuntu@123.45.67.89:~/ALPHATRADERAI/
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5-QADAM: BOTNI ISHGA TUSHIRISH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Serverga kiring:
+  ssh ubuntu@123.45.67.89
+
+Kerakli papkaga boring:
+  cd ~/ALPHATRADERAI
+
+Virtual muhit yaratish:
+  python3 -m venv venv
+  source venv/bin/activate
+
+Kutubxonalarni o'rnatish:
+  pip install -r requirements.txt
+
+Botni ishga tushirish:
+  python main.py
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6-QADAM: BOTNI DOIMIY ISHLATISH (1 OYLIK)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MUHIM: Agar SSH ni yopsangiz, bot TO'XTAYDI!
+Shuning uchun "screen" ishlatamiz:
+
+# Screen o'rnating
+sudo apt install screen -y
+
+# Screen yarating
+screen -S alphatrader
+
+# Botni ishga tushiring
+cd ~/ALPHATRADERAI
+source venv/bin/activate
+python main.py
+
+# Screen dan chiqish (bot fonlda qoladi):
+# Ctrl+A, then D
+
+# Qayta kirish:
+screen -r alphatrader
+
+# Screen ni ko'rish:
+screen -ls
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7-QADAM: AVTOMATIK ISHLASH (SERVER RESET BO'LSA HAM)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Systemd service yaratish
+sudo nano /etc/systemd/system/alphatrader.service
+
+Quyidagini kiriting (IP o'rniga o'zingizning papka):
+
+  [Unit]
+  Description=ALPHATRADERAI Bot
+  After=network.target
+
+  [Service]
+  Type=simple
+  User=ubuntu
+  WorkingDirectory=/home/ubuntu/ALPHATRADERAI
+  ExecStart=/home/ubuntu/ALPHATRADERAI/venv/bin/python main.py
+  Restart=always
+  RestartSec=10
+  Environment=PYTHONUNBUFFERED=1
+  Environment=PYTHONIOENCODING=utf-8
+
+  [Install]
+  WantedBy=multi-user.target
+
+Saqlang: Ctrl+O, Enter, Ctrl+X
+
+# Yoqish
+sudo systemctl daemon-reload
+sudo systemctl enable alphatrader
+sudo systemctl start alphatrader
+
+# Tekshirish
+sudo systemctl status alphatrader
+
+# To'xtatish
+sudo systemctl stop alphatrader
+
+# Qayta ishga tushirish
+sudo systemctl restart alphatrader
+
+# Loglarni ko'rish
+sudo journalctl -u alphatrader -f
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8-QADAM: TELEGRAM TOKEN NI O'ZGARTIRISH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Agar yangi Telegram bot yaratmoqchi bo'lsangiz:
+
+1. Telegram da @BotFather ga boring
+2. /newbot yozing
+3. Bot nomini kiriting
+4. Username kiriting
+5. Token ni oling: 1234567890:ABC...
+
+Serverda token ni o'zgartiring:
+  nano ~/ALPHATRADERAI/.env
+
+ ichida:
+  TELEGRAM_BOT_TOKEN=1234567890:ABC...
+
+Saqlang: Ctrl+O, Enter, Ctrl+X
+
+Botni qayta ishga tushiring:
+  sudo systemctl restart alphatrader
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TORMOZLAR (DIQQAT!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. BIR VAQTDA BIRTA BOT ISHLASHI KERAK
+   Agar 2 ta bot bir xil token bilan ishlasa → XATOLIK
+   Eski botni to'xtatish: Ctrl+C yoki systemctl stop
+
+2. BAN XAVFI
+   Bot har 60 soniyada 500+ symbol tekshiradi
+   Binance REST API limit: ~1200 so'rov/daqiqa
+   Bot ~100 so'rov/daqiqa ishlatadi — XAVFSIZ
+
+3. SERVER O'CHIB QOLSA
+   systemctl enable alphatrader → avtomatik yoqiladi
+   Lekin server to'liq o'chsa → qayta yoqish kerak
+
+4. DISK TO'LIQ BO'LSA
+   df -h  → disk ni tekshirish
+   Logs papkasini tozalash: rm -f ~/ALPHATRADERAI/logs/*.log
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TEKSHIRISH RO'YXATI (1 OYLIK)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Har 7-10 kunda tekshiring:
+
+□ Bot ishlayaptimi?
+  sudo systemctl status alphatrader
+
+□ Disk to'liq emasmi?
+  df -h
+
+□ Xatolik bormi?
+  sudo journalctl -u alphatrader --since "1 hour ago"
+
+□ Telegram dan /start yozing — javob keldimi?
+
+□ Telegram dan /liqmap yozing — ishlayaptimi?
+
+□ Telegram dan /predict BTCUSDT — bashorat chiqyaptimi?
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+XATOLIKLAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+XATOLIK: "ModuleNotFoundError: No module named 'xxx'"
+YECHIM: pip install -r requirements.txt
+
+XATOLIK: "Address already in use"
+YECHIM: Eski bot hali ishlayapti:
+  sudo systemctl stop alphatrader
+  sudo systemctl start alphatrader
+
+XATOLIK: "Connection refused"
+YECHIM: Firewall ochish:
+  sudo ufw allow 22
+  sudo ufw allow 8080
+  sudo ufw enable
+
+XATOLIK: Bot to'xtadi
+YECHIM: Loglarni tekshirish:
+  sudo journalctl -u alphatrader -n 50
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+O'CHIRISH (KERAK BO'LSA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Botni to'xtatish
+sudo systemctl stop alphatrader
+sudo systemctl disable alphatrader
+
+# Papkani o'chirish
+rm -rf ~/ALPHATRADERAI
+
+# Servis faylini o'chirish
+sudo rm /etc/systemd/system/alphatrader.service
+sudo systemctl daemon-reload
+
+╔══════════════════════════════════════════════════════════╗
+              OXIRGI ESLATMA
+╚══════════════════════════════════════════════════════════╝
+
+1. Server = $0-5/oy (Oracle bepul)
+2. Bot = avtomatik ishlaydi
+3. 1 oy = hech narsa qilish shart emas
+4. Faqat har 7-10 kunda tekshiring
+5. Telegram dan barcha buyruqlar ishlaydi
+
+Savol bo'lsa, menga yozing!

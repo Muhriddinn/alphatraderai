@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<title>ALPHATRADERAI — Crypto Trading Guide</title>
+<style>
+  @page { size: A4; margin: 2cm; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.7; color: #1a1a2e; max-width: 800px; margin: 0 auto; padding: 20px; }
+  h1 { color: #0f3460; font-size: 28px; text-align: center; border-bottom: 3px solid #e94560; padding-bottom: 10px; }
+  h2 { color: #16213e; font-size: 22px; margin-top: 40px; border-left: 5px solid #e94560; padding-left: 15px; }
+  h3 { color: #0f3460; font-size: 18px; }
+  .cover { text-align: center; padding: 100px 20px; page-break-after: always; }
+  .cover h1 { font-size: 36px; border: none; }
+  .cover .subtitle { font-size: 18px; color: #666; margin-top: 20px; }
+  .cover .version { font-size: 14px; color: #999; margin-top: 40px; }
+  .chapter { page-break-before: always; }
+  .chapter:first-of-type { page-break-before: auto; }
+  .example { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin: 15px 0; }
+  .example-title { font-weight: bold; color: #e94560; margin-bottom: 8px; }
+  .warning { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
+  .tip { background: #d4edda; border: 1px solid #28a745; border-radius: 8px; padding: 15px; margin: 15px 0; }
+  .formula { background: #e8eaf6; border-radius: 8px; padding: 12px 20px; margin: 10px 0; font-family: monospace; font-size: 14px; text-align: center; }
+  table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+  th, td { border: 1px solid #dee2e6; padding: 10px 12px; text-align: left; }
+  th { background: #0f3460; color: white; }
+  tr:nth-child(even) { background: #f8f9fa; }
+  .chart { text-align: center; margin: 20px 0; padding: 20px; background: #fafafa; border-radius: 8px; }
+  .emoji { font-size: 20px; }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 8px; }
+  .toc { page-break-after: always; }
+  .toc h2 { border: none; text-align: center; }
+  .toc ul { list-style: none; padding: 0; }
+  .toc li { padding: 8px 0; border-bottom: 1px dotted #ccc; }
+  .toc a { text-decoration: none; color: #0f3460; }
+  .green { color: #28a745; font-weight: bold; }
+  .red { color: #dc3545; font-weight: bold; }
+  .blue { color: #007bff; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <h1>ALPHATRADERAI</h1>
+  <div class="subtitle">Crypto Trading Concepts Guide</div>
+  <p style="font-size: 16px; margin-top: 30px;">
+    Kriptovalyuta savdosi asoslari:<br>
+    Order Book, Open Interest, Liquidation, Volume,<br>
+    Funding Rate, Whale tracking va boshqalar
+  </p>
+  <div class="version">Version 1.0 — 2026</div>
+</div>
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+  <h2>MUNDARIJA</h2>
+  <ul>
+    <li><strong>1-bob.</strong> Order Book (OB) — Buyurtmalar kitobi</li>
+    <li><strong>2-bob.</strong> Open Interest (OI) — Ochiq pozitsiyalar</li>
+    <li><strong>3-bob.</strong> Liquidation — Likvidatsiya</li>
+    <li><strong>4-bob.</strong> Volume — Hajm tahlili</li>
+    <li><strong>5-bob.</strong> Funding Rate — Moliyalashtirish stavkasi</li>
+    <li><strong>6-bob.</strong> Whale Detection — Kitoblar kuzatuvi</li>
+    <li><strong>7-bob.</strong> CVD — Cumulative Volume Delta</li>
+    <li><strong>8-bob.</strong> Fear & Greed Index — Qo'rqinch va Ismavlik indeksi</li>
+    <li><strong>9-bob.</strong> Long/Short Ratio — Uzun/Qisqa nisbati</li>
+    <li><strong>10-bob.</strong> Spoofing — Soxta buyurtmalar</li>
+    <li><strong>11-bob.</strong> Narx o'zgarishlari — Multi-timeframe</li>
+    <li><strong>12-bob.</strong> Correlation — Korrelyatsiya</li>
+    <li><strong>13-bob.</strong> Volume Profile — Hajm profili</li>
+    <li><strong>14-bob.</strong> Top Trader Sentiment — Treyderlar kayfiyati</li>
+  </ul>
+</div>
+
+<!-- CHAPTER 1: ORDER BOOK -->
+<div class="chapter">
+  <h2>1-bob. Order Book (OB) — Buyurtmalar kitobi</h2>
+
+  <h3>Nima?</h3>
+  <p>Order Book — bu bozordagi barcha <strong>sotish</strong> va <strong>sotib olish</strong> buyurtmalarining ro'yxati. Har bir narx darajasida qancha miqdor kutayotganini ko'rsatadi.</p>
+
+  <h3>Tuzilishi</h3>
+  <table>
+    <tr><th>Qism</th><th>Ma'no</th><th>Emoji</th></tr>
+    <tr><td><strong>Bids (BUY)</strong></td><td>Sotib olish buyurtmalari — foydalanuvchilar shu narxdan yuqoriroqqa sotib olishga tayyor</td><td class="green">🟢</td></tr>
+    <tr><td><strong>Asks (SELL)</strong></td><td>Sotish buyurtmalari — foydalanuvchilar shu narxdan pastroqqa sotishga tayyor</td><td class="red">🔴</td></tr>
+    <tr><td><strong>Spread</strong></td><td>Eng yuqori BUY va eng past SELL orasidagi farq</td><td>📊</td></tr>
+  </table>
+
+  <h3>Order Book Devor (Wall)</h3>
+  <p>Bir narx darajasida juda katta miqdordagi buyurtma — bu <strong>"devor"</strong> deb ataladi.</p>
+
+  <div class="example">
+    <div class="example-title">Misol: BTCUSDT Order Book</div>
+    <table>
+      <tr><th>Narx</th><th>BUY (🟢)</th><th>SELL (🔴)</th></tr>
+      <tr><td>$60,100</td><td>$500,000</td><td></td></tr>
+      <tr><td>$60,050</td><td>$200,000</td><td></td></tr>
+      <tr><td>$60,000</td><td><strong>$2,000,000</strong> 🧱</td><td></td></tr>
+      <tr><td>$59,950</td><td></td><td>$300,000</td></tr>
+      <tr><td>$59,900</td><td></td><td>$150,000</td></tr>
+      <tr><td>$59,800</td><td></td><td><strong>$1,500,000</strong> 🧱</td></tr>
+    </table>
+    <p><strong>$60,000</strong> da BUY devor bor — narx shu darajaga tushsa, katta qo'llab-quvvatlash bo'ladi.</p>
+    <p><strong>$59,800</strong> da SELL devor bor — narx shu darajaga chiqsa, katta bosim bo'ladi.</p>
+  </div>
+
+  <h3>Imbalance (Nisbat)</h3>
+  <div class="formula">Imbalance = BUY devor / SELL devor</div>
+  <table>
+    <tr><th>Nisbat</th><th>Ma'no</th><th>Signall</th></tr>
+    <tr><td><strong>> 1.5x</strong></td><td>BUY devor kuchli</td><td class="green">🟢 LONG signali</td></tr>
+    <tr><td><strong>< 0.67x</strong></td><td>SELL devor kuchli</td><td class="red">🔴 SHORT signali</td></tr>
+    <tr><td><strong>0.67x - 1.5x</strong></td><td>Balanslangan</td><td>⚪ Signalsiz</td></tr>
+  </table>
+
+  <div class="tip">
+    <strong>Maslahat:</strong> BUY devor > SELL devor → Narx tushishi qiyin → Ehtimol LONG
+  </div>
+</div>
+
+<!-- CHAPTER 2: OPEN INTEREST -->
+<div class="chapter">
+  <h2>2-bob. Open Interest (OI) — Ochiq pozitsiyalar</h2>
+
+  <h3>Nima?</h3>
+  <p>Open Interest — bu bozorda hali <strong>yopilmagan</strong> (ochiq) derivativ pozitsiyalarining umumiy miqdori. Har bir yangi shartnoma ochilganda OI ortadi, yopilganda kamayadi.</p>
+
+  <h3>OI o'zgarishi nimani anglatadi?</h3>
+  <table>
+    <tr><th>O'zgarish</th><th>Ma'no</th><th>Narx ta'siri</th></tr>
+    <tr><td class="green">OI ortdi + Narx ortdi</td><td>Yangi LONG pozitsiyalar ochilmoqda</td><td>Narx o'sishi davom etishi mumkin</td></tr>
+    <tr><td class="green">OI ortdi + Narx kamaydi</td><td>Yangi SHORT pozitsiyalar ochilmoqda</td><td>Narx tushishi mumkin</td></tr>
+    <tr><td class="red">OI kamaydi + Narx ortdi</td><td>SHORT pozitsiyalar yopilmoqda (short squeeze)</td><td>Narx keskin o'sishi mumkin</td></tr>
+    <tr><td class="red">OI kamaydi + Narx kamaydi</td><td>LONG pozitsiyalar yopilmoqda (long squeeze)</td><td>Narx keskin tushishi mumkin</td></tr>
+  </table>
+
+  <div class="chart">
+    <svg width="500" height="200" viewBox="0 0 500 200">
+      <rect width="500" height="200" fill="#f8f9fa"/>
+      <text x="250" y="20" text-anchor="middle" font-size="14" font-weight="bold">OI o'zgarishi misoli</text>
+      <!-- OI line going up -->
+      <polyline points="50,150 100,140 150,120 200,100 250,80 300,60 350,40 400,30 450,25" fill="none" stroke="#28a745" stroke-width="3"/>
+      <text x="460" y="25" font-size="12" fill="#28a745">OI ↑</text>
+      <!-- Price line -->
+      <polyline points="50,130 100,135 150,125 200,110 250,95 300,85 350,75 400,70 450,65" fill="none" stroke="#007bff" stroke-width="2" stroke-dasharray="5,5"/>
+      <text x="460" y="65" font-size="12" fill="#007bff">Narx ↑</text>
+      <!-- X axis -->
+      <line x1="50" y1="170" x2="450" y2="170" stroke="#333" stroke-width="1"/>
+      <text x="250" y="190" text-anchor="middle" font-size="11">Vaqt</text>
+    </svg>
+  </div>
+
+  <h3>OIDa qidiriladigan narsalar</h3>
+  <ul>
+    <li><strong>Tezlik (Speed):</strong> OI necha soniyada qancha o'zgardi? Tez o'zgarish = kuchli harakat</li>
+    <li><strong>Ko'p sonli o'zgarish:</strong> 0.5% dan kam o'zgarish — oddiy, 2-3% dan oshsa — muhim signal</li>
+    <li><strong>Davomiylilik:</strong> OI 10 daqiqadan ortiq o'saversa — kuchli trend</li>
+  </ul>
+
+  <div class="formula">OI Change % = ((Joriy OI - Oldingi OI) / Oldingi OI) × 100</div>
+</div>
+
+<!-- CHAPTER 3: LIQUIDATION -->
+<div class="chapter">
+  <h2>3-bob. Liquidation — Likvidatsiya</h2>
+
+  <h3>Nima?</h3>
+  <p>Likvidatsiya — bu treyderning <strong>marjin yetarli emas</strong> bo'lganda avtomatik pozitsiyasi yopilishi. Binance kabi birjalar leveraj (borrowed money) bilan savdo qilgan treyderlarning pozitsiyasini yo'qotadi.</p>
+
+  <h3>Qanday ishlaydi?</h3>
+  <div class="example">
+    <div class="example-title">Misol: 10x leverage bilan LONG</div>
+    <p>Treyder: $1,000 bilan 10x leverage = $10,000 lik pozitsiya</p>
+    <p>Entry narx: $100</p>
+    <p>Liquidation narx: ~$91 (taxminan -9%)</p>
+    <p><strong>Agar narx $91 ga tushsa</strong> → Avtomatik yopiladi → $1,000 yo'qoladi</p>
+  </div>
+
+  <h3>Likvidatsiya zonalari</h3>
+  <table>
+    <tr><th>Zona</th><th>Ma'no</th><th>Signal</th></tr>
+    <tr><td class="red">LONG likvidatsiya ko'p</td><td>Narx tushsa, ko'p treyderlar yo'qotadi</td><td>Narx tushishi mumkin (domino effekti)</td></tr>
+    <tr><td class="green">SHORT likvidatsiya ko'p</td><td>Narx chiqsa, ko'p treyderlar yo'qotadi</td><td>Narx o'sishi mumkin (short squeeze)</td></tr>
+  </table>
+
+  <h3>Liquidation Heatmap</h3>
+  <p>Bu xarita — qaysi narx darajasida eng ko'p likvidatsiya bo'lishini ko'rsatadi.</p>
+
+  <div class="chart">
+    <svg width="500" height="180" viewBox="0 0 500 180">
+      <rect width="500" height="180" fill="#f8f9fa"/>
+      <text x="250" y="20" text-anchor="middle" font-size="14" font-weight="bold">Liquidation Heatmap (Misol)</text>
+      <!-- Bars representing liquidation zones -->
+      <rect x="70" y="40" width="40" height="100" fill="#dc3545" opacity="0.8"/>
+      <text x="90" y="155" text-anchor="middle" font-size="10">$59,500</text>
+      <text x="90" y="35" text-anchor="middle" font-size="10" fill="#dc3545">$2.5M</text>
+
+      <rect x="130" y="60" width="40" height="80" fill="#dc3545" opacity="0.6"/>
+      <text x="150" y="155" text-anchor="middle" font-size="10">$59,000</text>
+      <text x="150" y="55" text-anchor="middle" font-size="10" fill="#dc3545">$1.8M</text>
+
+      <rect x="190" y="100" width="40" height="40" fill="#dc3545" opacity="0.4"/>
+      <text x="210" y="155" text-anchor="middle" font-size="10">$58,500</text>
+      <text x="210" y="95" text-anchor="middle" font-size="10" fill="#dc3545">$0.8M</text>
+
+      <rect x="280" y="50" width="40" height="90" fill="#28a745" opacity="0.7"/>
+      <text x="300" y="155" text-anchor="middle" font-size="10">$60,500</text>
+      <text x="300" y="45" text-anchor="middle" font-size="10" fill="#28a745">$2.1M</text>
+
+      <rect x="340" y="80" width="40" height="60" fill="#28a745" opacity="0.5"/>
+      <text x="360" y="155" text-anchor="middle" font-size="10">$61,000</text>
+      <text x="360" y="75" text-anchor="middle" font-size="10" fill="#28a745">$1.2M</text>
+
+      <rect x="400" y="110" width="40" height="30" fill="#28a745" opacity="0.3"/>
+      <text x="420" y="155" text-anchor="middle" font-size="10">$61,500</text>
+      <text x="420" y="105" text-anchor="middle" font-size="10" fill="#28a745">$0.5M</text>
+
+      <text x="150" y="175" text-anchor="middle" font-size="11" fill="#dc3545">🔴 LONG likvidatsiya (narx tushsa)</text>
+      <text x="350" y="175" text-anchor="middle" font-size="11" fill="#28a745">🟢 SHORT likvidatsiya (narx chiqsa)</text>
+    </svg>
+  </div>
+
+  <div class="warning">
+    <strong>Diqqat!</strong> Likvidatsiya zonalariga yaqinlashganda, narx tezroq harakat qilishi mumkin — bu "likvidatsiya cascade" (domino effekti).
+  </div>
+</div>
+
+<!-- CHAPTER 4: VOLUME -->
+<div class="chapter">
+  <h2>4-bob. Volume — Hajm tahlili</h2>
+
+  <h3>Nima?</h3>
+  <p>Volume — ma'lum bir vaqt ichida bajarilgan barcha savdolarning umumiy miqdori (USDT da). Volume oshishi = bozor faolligi oshishi.</p>
+
+  <h3>Volume Spike (O'tkinchilik)</h3>
+  <p>Agar hozirgi volume odatdagidan <strong>keskin</strong> ko'p bo'lsa — bu muhim signal!</p>
+
+  <table>
+    <tr><th>Spike darajasi</th><th>Ma'no</th><th>Harakat</th></tr>
+    <tr><td><strong>100%+</strong></td><td>2x dan ortiq oshdi</td><td class="green">Jiddiy signal — kuzating</td></tr>
+    <tr><td><strong>200%+</strong></td><td>3x dan ortiq oshdi</td><td class="green">Kuchli signal — ehtimol yangi trend boshlandi</td></tr>
+    <tr><td><strong>500%+</strong></td><td>6x dan ortiq oshdi</td><td class="green">Ekstremal — juda ehtiyot bo'ling!</td></tr>
+  </table>
+
+  <div class="example">
+    <div class="example-title">Misol: Volume Spike aniqlash</div>
+    <p>15 daqiqalik o'rtacha volume: <strong>$50M</strong></p>
+    <p>Hozirgi 1 daqiqalik volume: <strong>$150M</strong></p>
+    <p>Spike = ($150M / $50M - 1) × 100 = <strong class="green">+200%</strong></p>
+    <p>→ Bu juda katta o'sish — narx tez o'zgarishi mumkin!</p>
+  </div>
+
+  <h3>Volume va Narx munosabati</h3>
+  <table>
+    <tr><th>Volume</th><th>Narx</th><th>Ma'no</th></tr>
+    <tr><td class="green">Yuqori</td><td class="green">Oshdi</td><td>Kuchli o'sish trendi — ishonchli</td></tr>
+    <tr><td class="red">Past</td><td class="green">Oshdi</td><td>Kuchsiz o'sish — ehtimol soxta (fakeout)</td></tr>
+    <tr><td class="green">Yuqori</td><td class="red">Kamaydi</td><td>Kuchli tushish trendi — ishonchli</td></tr>
+    <tr><td class="red">Past</td><td class="red">Kamaydi</td><td>Kuchsiz tushish — ehtimol qaytadi</td></tr>
+  </table>
+
+  <div class="tip">
+    <strong>Qoida:</strong> Narx o'sishi volume bilan birga bo'lsa — trend ishonchli. Volume holdsiz narx o'sishi — soxta bo'lishi mumkin.
+  </div>
+</div>
+
+<!-- CHAPTER 5: FUNDING RATE -->
+<div class="chapter">
+  <h2>5-bob. Funding Rate — Moliyalashtirish stavkasi</h2>
+
+  <h3>Nima?</h3>
+  <p>Funding Rate — bu perpetual (muddatsiz) kontraktlarda <strong>LONG</strong> va <strong>SHORT</strong> treyderlar orasidagi to'lov. Har 8 soatda bir hisoblanadi.</p>
+
+  <h3>Qanday ishlaydi?</h3>
+  <div class="formula">Funding Rate > 0 → LONG treyderlar SHORT larga to'laydi</div>
+  <div class="formula">Funding Rate < 0 → SHORT treyderlar LONG larga to'laydi</div>
+
+  <table>
+    <tr><th>Stavka</th><th>Ma'no</th><th>Signal</th></tr>
+    <tr><td class="green"><strong>> +0.01%</strong></td><td>Bozor juda ko'p LONG ga moyil</td><td>SHORT squeeze ehtimoli bor</td></tr>
+    <tr><td class="red"><strong>< -0.01%</strong></td><td>Bozor juda ko'p SHORT ga moyil</td><td>LONG squeeze ehtimoli bor</td></tr>
+    <tr><td><strong>0%</strong> yaqin</td><td>Bozor balanslangan</td><td>Signalsiz</td></tr>
+  </table>
+
+  <div class="example">
+    <div class="example-title">Misol: Funding Rate tahlili</div>
+    <p>BTCUSDT Funding Rate: <strong class="green">+0.03%</strong></p>
+    <p>→ Bu juda yuqori! Bozor juda ko'p LONG ga moyil.</p>
+    <p>→ Agar narx tushsa, LONG treyderlar to'lov qilishi kerak → ular pozitsiyasini yopishi mumkin → narx yanada tushishi mumkin.</p>
+    <p>→ <strong>SIGNAL:</strong> Ehtiyot bo'ling, SHORT squeeze bo'lishi mumkin!</p>
+  </div>
+
+  <h3>Funding Rate History</h3>
+  <p>Oxirgi 8 soatdagi o'zgarishni kuzating:</p>
+  <ul>
+    <li><strong>Stabil yuqori (+0.01%+):</strong> Bozor overbought bo'lishi mumkin</li>
+    <li><strong>Stabil past (-0.01%-):</strong> Bozor oversold bo'lishi mumkin</li>
+    <li><strong>Tez o'zgarish:</strong> Katta harakat kutilmoqda</li>
+  </ul>
+</div>
+
+<!-- CHAPTER 6: WHALE DETECTION -->
+<div class="chapter">
+  <h2>6-bob. Whale Detection — Kitoblar kuzatuvi</h2>
+
+  <h3>Nima?</h3>
+  <p>Whale (kitob) — bu juda katta miqdorda savdo qiluvchi treyder yoki institut. Ularning harakatlari bozorni sezilarli ta'sir qilishi mumkin.</p>
+
+  <h3>Qanday aniqlaymiz?</h3>
+  <table>
+    <tr><th>Kriteriya</th><th>Qiymat</th><th>Ma'no</th></tr>
+    <tr><td>Minimal miqdor</td><td><strong>$30,000+</strong></td><td>Jiddiy whale trade</td></tr>
+    <tr><td>Hajm filtri</td><td><strong>1%+</strong></td><td>Symbolning umumiy hajmidan</td></tr>
+  </table>
+
+  <h3>Whale harakatlari</h3>
+  <table>
+    <tr><th>Harakat</th><th>Ma'no</th><th>Signal</th></tr>
+    <tr><td class="green">Whale BUY</td><td>Katta miqdorda sotib olmoqda</td><td>Narx o'sishi mumkin</td></tr>
+    <tr><td class="red">Whale SELL</td><td>Katta miqdorda sotmoqda</td><td>Narx tushishi mumkin</td></tr>
+  </table>
+
+  <div class="example">
+    <div class="example-title">Misol: Whale aniqlash</div>
+    <p>🐋 <strong>BTCUSDT BUY 126,000 USDT</strong></p>
+    <p>→ Kimdir $126K qiymatida BTC sotib oldi</p>
+    <p>→ Bu katta summa — bozorga ta'sir qilishi mumkin</p>
+    <p>→ <strong>SIGNAL:</strong> Kuzating, boshqa treyderlar ham ergashishi mumkin</p>
+  </div>
+
+  <div class="warning">
+    <strong>Ogohlantirish:</strong> Whale harakati har doim ham ishonchli emas. Katta treyderlar ko'pincha "iceberg" buyurtmalar ishlatadi — ularni ko'rinmas qilish uchun kichik qismlarga bo'lishadi.
+  </div>
+</div>
+
+<!-- CHAPTER 7: CVD -->
+<div class="chapter">
+  <h2>7-bob. CVD — Cumulative Volume Delta</h2>
+
+  <h3>Nima?</h3>
+  <p>CVD — bu <strong>Market Buy</strong> va <strong>Market Sell</strong> orderlar farqining yig'indisi. Bu treyderlar haqiqatan nima qilayotganini ko'rsatadi.</p>
+
+  <div class="formula">CVD = Σ (Market Buy Volume - Market Sell Volume)</div>
+
+  <h3>CVD va Narx Divergence</h3>
+  <table>
+    <tr><th>Holat</th><th>Ma'no</th><th>Signal</th></tr>
+    <tr><td class="green">CVD ↑ + Narx ↑</td><td>Haqiqiy sotib olish kuchi bor</td><td>Trend davom etishi mumkin</td></tr>
+    <tr><td class="green">CVD ↑ + Narx ↓</td><td>Katta treyderlar sotib olmoqda, lekin narx tushmoqda</td><td class="green">Potential reversal — narx o'sishi mumkin!</td></tr>
+    <tr><td class="red">CVD ↓ + Narx ↑</td><td>Katta treyderlar sotmoqda, lekin narx o'smoqda</td><td class="red">Potential reversal — narx tushishi mumkin!</td></tr>
+    <tr><td class="red">CVD ↓ + Narx ↓</td><td>Haqiqiy sotish kuchi bor</td><td>Trend davom etishi mumkin</td></tr>
+  </table>
+
+  <div class="example">
+    <div class="example-title">Misol: CVD Divergence</div>
+    <p>Narx: $60,000 → $61,000 (+1.7%)</p>
+    <p>CVD: +500 → +200 (-60%)</p>
+    <p>→ Narx o'sayapti, lekin CVD kamayayapti!</p>
+    <p>→ <strong>Diqqat!</strong> Bu soxta o'sish bo'lishi mumkin — katta treyderlar sotmoqda</p>
+  </div>
+</div>
+
+<!-- CHAPTER 8: FEAR & GREED -->
+<div class="chapter">
+  <h2>8-bob. Fear & Greed Index — Qo'rqinch va Ismavlik indeksi</h2>
+
+  <h3>Nima?</h3>
+  <p>Bu indeks — bozor kayfiyatini 0 dan 100 gacha baholaydi. Alternativ.io tomonidan hisoblanadi.</p>
+
+  <table>
+    <tr><th>Qiymat</th><th>Holat</th><th>Emoji</th><th>Ma'no</th></tr>
+    <tr><td><strong>0-24</strong></td><td>Extremal Qo'rqinch</td><td>🔴</td><td>Bozor juda qo'rqmoqda — ehtimol PAST NARX</td></tr>
+    <tr><td><strong>25-49</strong></td><td>Qo'rqinch</td><td>🟠</td><td>Bozor qo'rqmoqda — ehtimol past narx</td></tr>
+    <tr><td><strong>50</strong></td><td>Neytral</td><td>⚪</td><td>Bozor befarq</td></tr>
+    <tr><td><strong>51-74</strong></td><td>Ismavlik</td><td>🟢</td><td>Bozor ishonsiz — ehtimol yuqori narx</td></tr>
+    <tr><td><strong>75-100</strong></td><td>Extremal Ismavlik</td><td>🟢</td><td>Bozor juda ishonsiz — ehtimol YUQORI NARX</td></tr>
+  </table>
+
+  <div class="tip">
+    <strong>Contrarian strategiya:</strong> "Boshqalar qo'rqganda — sotib ol. Boshqalar ishonganda — sot." Warren Buffett
+  </div>
+
+  <div class="example">
+    <div class="example-title">Misol: Fear & Greed ishlatish</div>
+    <p>Index: <strong>20</strong> (Extremal Qo'rqinch)</p>
+    <p>→ Bozor juda qo'rqmoqda — ko'pchilik sotmoqda</p>
+    <p>→ <strong>Opposite:</strong> Bu ehtimol PAST NARX — sotib olish vaqti!</p>
+    <p><br></p>
+    <p>Index: <strong>85</strong> (Extremal Ismavlik)</p>
+    <p>→ Bozor juda ishonsiz — ko'pchilik sotib olmoqda</p>
+    <p>→ <strong>Opposite:</strong> Bu ehtimol YUQORI NARX — sotish vaqti!</p>
+  </div>
+</div>
+
+<!-- CHAPTER 9: LONG/SHORT RATIO -->
+<div class="chapter">
+  <h2>9-bob. Long/Short Ratio — Uzun/Qisqa nisbati</h2>
+
+  <h3>Nima?</h3>
+  <p>Long/Short Ratio — bozordagi <strong>LONG pozitsiyalar</strong> soni vs <strong>SHORT pozitsiyalar</strong> soni nisbati. Binance dan olinadi.</p>
+
+  <div class="formula">L/S Ratio = LONG soni / SHORT soni</div>
+
+  <table>
+    <tr><th>Nisbat</th><th>Ma'no</th><th>Signal</th></tr>
+    <tr><td><strong>> 1.5</strong></td><td>Ko'pchilik LONG qilmoqda</td><td class="red">SHORT squeeze ehtimoli</td></tr>
+    <tr><td><strong>< 0.67</strong></td><td>Ko'pchilik SHORT qilmoqda</td><td class="green">LONG squeeze ehtimoli</td></tr>
+    <tr><td><strong>~1.0</strong></td><td>Balanslangan</td><td>Signalsiz</td></tr>
+  </table>
+
+  <div class="warning">
+    <strong>Eslatma:</strong> Ko'pchilik har doim ham noto'g'ri qaror qabul qiladi! L/S Ratio juda yuqori bo'lsa — bozor reverse bo'lishi mumkin.
+  </div>
+</div>
+
+<!-- CHAPTER 10: SPOOFING -->
+<div class="chapter">
+  <h2>10-bob. Spoofing — Soxta buyurtmalar</h2>
+
+  <h3>Nima?</h3>
+  <p> Spoofing — bu katta buyurtma qo'yish va keyin uni <strong>bechor qilish</strong>. Maqsad — boshqa treyderlarni aldash.</p>
+
+  <h3>Qanday ishlaydi?</h3>
+  <div class="example">
+    <div class="example-title">Misol: SELL Spoofing</div>
+    <p>1. Treyder <strong>$1M</strong> miqdorida SELL buyurtma qo'yadi @ $60,000</p>
+    <p>2. Boshqa treyderlar ko'radi: "Katta sotish kelyapti!"</p>
+    <p>3. Ular ham sotishni boshlaydi → Narx tushadi</p>
+    <p>4. Treyder <strong>buyurtmani bekor qiladi</strong></p>
+    <p>5. Treyder past narxdan <strong>sotib oladi</strong></p>
+    <p>→ <strong>Maqsad:</strong> Narxni sun'iy tushitib, arzonroq sotib olish!</p>
+  </div>
+
+  <h3>Qanday aniqlaymiz?</h3>
+  <table>
+    <tr><th>Kriteriya</th><th>Ma'no</th></tr>
+    <tr><td><strong>60 soniyadan kam turdi</strong></td><td>Buyurtma juda qisqa vaqt turdi — ehtimol spoofing</td></tr>
+    <tr><td><strong>300 soniyadan ortiq turdi</strong></td><td>Buyurtma uzoq turdi — ehtimol haqiqiy</td></tr>
+  </table>
+
+  <div class="tip">
+    <strong>Botda:</strong> Agar buyurtma 60-300 soniya orasida turib, keyin yo'qolsa — SPOOFING aniqlanadi va ogohlantirish beriladi.
+  </div>
+</div>
+
+<!-- CHAPTER 11: PRICE CHANGES -->
+<div class="chapter">
+  <h2>11-bob. Narx o'zgarishlari — Multi-timeframe</h2>
+
+  <h3>Nima?</h3>
+  <p>Narxning turli vaqt davomida qancha o'zgarganini kuzatish — bu trendni tushunishda yordam beradi.</p>
+
+  <table>
+    <tr><th>Timeframe</th><th>Maqsad</th><th>Threshold (Bizda)</th></tr>
+    <tr><td><strong>1 daqiqa</strong></td><td>Tezkor o'zgarishlar — HFT botlar</td><td>±1.5%</td></tr>
+    <tr><td><strong>5 daqiqa</strong></td><td>Qisqa muddatli trend</td><td>±3.0%</td></tr>
+    <tr><td><strong>15 daqiqa</strong></td><td>O'rtacha muddatli trend</td><td>—</td></tr>
+    <tr><td><strong>1 soat</strong></td><td>Kunlik trend</td><td>—</td></tr>
+    <tr><td><strong>4 soat</strong></td><td>O'rtacha muddatli trend</td><td>—</td></tr>
+    <tr><td><strong>24 soat</strong></td><td>Uzoq muddatli trend</td><td>—</td></tr>
+  </table>
+
+  <div class="example">
+    <div class="example-title">Misol: Multi-timeframe tahlil</div>
+    <p>BTCUSDT:</p>
+    <p>1m: +0.5% | 5m: +1.2% | 15m: +2.5% | 1h: +5.0% | 4h: +8.0% | 24h: +12.0%</p>
+    <p>→ <strong>Hammasi ijobiy</strong> — kuchli o'sish trendi!</p>
+    <p>→ Lekin 1m +0.5% — bu juda kichik, ehtimol vaqtincha</p>
+  </div>
+</div>
+
+<!-- CHAPTER 12: CORRELATION -->
+<div class="chapter">
+  <h2>12-bob. Correlation — Korrelyatsiya</h2>
+
+  <h3>Nima?</h3>
+  <p>Korrelyatsiya — ikki cryptocurrency narxining <strong>bir xil tomonga</strong> yoki <strong>teskari tomonga</strong> harakat qilish darajasi.</p>
+
+  <div class="formula">Korrelyatsiya = -1.0 dan +1.0 gacha</div>
+
+  <table>
+    <tr><th>Qiymat</th><th>Ma'no</th><th>Misol</th></tr>
+    <tr><td class="green"><strong>+1.0</strong></td><td>Mukammal bir xil harakat</td><td>BTC ↑ = ETH ↑ (deyarli har doim)</td></tr>
+    <tr><td><strong>0.5 - 0.9</strong></td><td>Kuchli ijobiy</td><td>BTC ↑ = SOL ↑</td></tr>
+    <tr><td><strong>-0.5 - -0.9</strong></td><td>Kuchli salbiy</td><td>BTC ↑ = DXY ↓</td></tr>
+    <tr><td class="red"><strong>-1.0</strong></td><td>Mukammal teskari</td><td>Dollar ↑ = BTC ↓</td></tr>
+  </table>
+
+  <div class="tip">
+    <strong>Portfolio diversifikatsiya:</strong> Korrelyatsiyasi past bo'lgan cryptolarni tanlang — risk kamayadi.
+  </div>
+</div>
+
+<!-- CHAPTER 13: VOLUME PROFILE -->
+<div class="chapter">
+  <h2>13-bob. Volume Profile — Hajm profili</h2>
+
+  <h3>Nima?</h3>
+  <p>Volume Profile — qaysi narx darajasida eng ko'p savdo bo'lganini ko'rsatadi. Bu <strong>qo'llab-quvvatlash</strong> va <strong>qarshilik</strong> darajalarini aniqlashda yordam beradi.</p>
+
+  <h3>Asosiy tushunchalar</h3>
+  <table>
+    <tr><th>Tushuncha</th><th>Ma'no</th><th>Signal</th></tr>
+    <tr><td><strong>PoC (Point of Control)</strong></td><td>Eng ko'p hajm bo'lgan narx</td><td>Narx ko'pincha shu darajaga qaytadi</td></tr>
+    <tr><td><strong>VAH (Value Area High)</strong></td><td>Qiymatli hududning yuqorisi</td><td>Qarshilik darajasi</td></tr>
+    <tr><td><strong>VAL (Value Area Low)</strong></td><td>Qiymatli hududning pasti</td><td>Qo'llab-quvvatlash darajasi</td></tr>
+  </table>
+
+  <div class="chart">
+    <svg width="500" height="200" viewBox="0 0 500 200">
+      <rect width="500" height="200" fill="#f8f9fa"/>
+      <text x="250" y="20" text-anchor="middle" font-size="14" font-weight="bold">Volume Profile (Misol)</text>
+      <!-- Volume bars -->
+      <rect x="200" y="30" width="200" height="20" fill="#007bff" opacity="0.3"/>
+      <rect x="200" y="55" width="150" height="20" fill="#007bff" opacity="0.25"/>
+      <rect x="200" y="80" width="350" height="25" fill="#007bff" opacity="0.8"/>
+      <text x="560" y="97" font-size="11" fill="#007bff">← PoC (eng ko'p hajm)</text>
+      <rect x="200" y="110" width="180" height="20" fill="#007bff" opacity="0.3"/>
+      <rect x="200" y="135" width="100" height="20" fill="#007bff" opacity="0.2"/>
+      <rect x="200" y="160" width="50" height="20" fill="#007bff" opacity="0.15"/>
+      <!-- Price labels -->
+      <text x="185" y="45" text-anchor="end" font-size="11">$61,000</text>
+      <text x="185" y="95" text-anchor="end" font-size="11" font-weight="bold">$60,000</text>
+      <text x="185" y="150" text-anchor="end" font-size="11">$59,000</text>
+    </svg>
+  </div>
+</div>
+
+<!-- CHAPTER 14: TOP TRADER SENTIMENT -->
+<div class="chapter">
+  <h2>14-bob. Top Trader Sentiment — Treyderlar kayfiyati</h2>
+
+  <h3>Nima?</h3>
+  <p>Binance ning eng ko'p daromad oluvchi treyderlarining <strong>haqiqiy pozitsiyalari</strong>. Bu "smart money" (aqlli pul) nima qilayotganini ko'rish imkonini beradi.</p>
+
+  <table>
+    <tr><th>Ko'rsatgich</th><th>Ma'no</th><th>Signal</th></tr>
+    <tr><td class="green"><strong>Top Treyderlar LONG%</strong></td><td>Eng ko'p daromad oluvchilar necha % LONG</td><td>> 60% = LONG ga ishonch</td></tr>
+    <tr><td class="red"><strong>Top Treyderlar SHORT%</strong></td><td>Eng ko'p daromad oluvchilar necha % SHORT</td><td>> 60% = SHORT ga ishonch</td></tr>
+  </table>
+
+  <div class="example">
+    <div class="example-title">Misol: Top Trader tahlili</div>
+    <p>BTCUSDT:</p>
+    <p>Top Treyderlar: <strong class="green">72% LONG</strong> | 28% SHORT</p>
+    <p>→ Aqlli treyderlar BTC ni ko'proq sotib olmoqda</p>
+    <p>→ Bu ijobiy signal — trend o'sishi mumkin</p>
+  </div>
+
+  <div class="warning">
+    <strong>Eslatma:</strong> Top Traderlar ham xato qilishi mumkin! Boshqa indikatorlar bilan birga ishlating.
+  </div>
+</div>
+
+<!-- SUMMARY -->
+<div class="chapter">
+  <h2>XULOSA — Qanday qilib foydalanish kerak?</h2>
+
+  <h3>Har bir signallni tahlil qilish tartibi:</h3>
+  <ol>
+    <li><strong>Volume</strong> — Hajm oshganmi? Spike bormi?</li>
+    <li><strong>Order Book</strong> — Devorlar qayerda? Imbalance qanday?</li>
+    <li><strong>Open Interest</strong> — Ochiq pozitsiyalar o'zgarmoqdami?</li>
+    <li><strong>Funding Rate</strong> — Bozor qaysi tomonga moyil?</li>
+    <li><strong>Liquidation</strong> — Qaysi narxlarda katta likvidatsiya bor?</li>
+    <li><strong>Whale</strong> — Katta treyderlar nima qilyapti?</li>
+    <li><strong>CVD</strong> — Haqiqiy sotib olish/sotish kuchi qanday?</li>
+    <li><strong>Fear & Greed</strong> — Bozor qo'rqmoqda yoki ishonsizmi?</li>
+  </ol>
+
+  <div class="tip">
+    <strong>Oltin qoida:</strong> Hech qachon bitta indikatorga ishonmang! Barcha indikatorlarni birgalikda tahlil qiling.
+  </div>
+
+  <h3>Risk boshqarish:</h3>
+  <ul>
+    <li>Har bir savdoda <strong>Stop Loss</strong> qo'ying</li>
+    <li>Kapitalning <strong>1-2%</strong> dan ortiq xavf ostiga qo'ymang</li>
+    <li>Leverajni <strong>5x-10x</strong> dan ortiq ishlatmang</li>
+    <li>Diversifikatsiya qiling — bitta cryptoga hamma narsani qo'ymang</li>
+  </ul>
+
+  <div class="warning">
+    <strong>Ogohlantirish:</strong> Kriptovalyuta savdosi juda xavfli. Barcha pullaringizni yo'qotishingiz mumkin. Faqat yo'qotishga tayyor bo'lgan miqdorni sarmoya qiling.
+  </div>
+</div>
+
+</body>
+</html>
