@@ -475,8 +475,9 @@ class BinanceFuturesConnector:
         loaded = 0
         errors = 0
         total = len(self.symbols)
-        # Batch: 5 ta coin parallel — xotira tejash
-        batch_size = 5
+        # Batch: 3 ta coin — 3 × 51 = 153 weight/batch
+        # 8s delay → 153/8 × 60 = 1148 weight/min (< 2000 limit)
+        batch_size = 3
 
         for start in range(0, total, batch_size):
             batch = self.symbols[start:start + batch_size]
@@ -495,7 +496,7 @@ class BinanceFuturesConnector:
                     errors += 1
             if (start // batch_size) % 10 == 0:
                 logger.info(f"📊 Bootstrap: {start + len(batch)}/{total} yuklandi...")
-            await asyncio.sleep(5.0)
+            await asyncio.sleep(8.0)
 
         logger.info(f"✅ Bootstrap tugadi: {loaded}/{total} symbol ({errors} errors)")
 
