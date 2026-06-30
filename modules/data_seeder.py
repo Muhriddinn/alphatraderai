@@ -40,14 +40,17 @@ class DataSeeder:
 
                 total_trades = 0
                 for i, symbol in enumerate(symbols):
+                    if self._banned:
+                        logger.warning(f"⛔ DataSeeder: ban bo'ldi — {i}/{total} da to'xtatildi")
+                        break
                     try:
                         trades = await self._fetch_trades(symbol)
                         if trades:
                             total_trades += len(trades)
                             await self._process_trades(symbol, trades)
-                        if (i + 1) % 20 == 0:
+                        if (i + 1) % 50 == 0:
                             logger.info(f"📥 DataSeeder: {i+1}/{total} — {total_trades} trade")
-                        await asyncio.sleep(1.0)
+                        await asyncio.sleep(2.0)
                     except Exception:
                         continue
 
@@ -65,24 +68,12 @@ class DataSeeder:
         if self._banned:
             return []
         try:
-            await rate_limiter.acquire(weight=40)
-            async with aiohttp.ClientSession() as session:
-                url = "https://fapi.binance.com/fapi/v1/ticker/24hr"
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                    if resp.status == 418:
-                        logger.warning("⛔ DataSeeder: IP BAN — to'xtatiladi")
-                        self._banned = True
-                        return []
-                    if resp.status == 429:
-                        await retry_handler.handle_429(resp)
-                        return []
-                    if resp.status == 200:
-                        data = await resp.json()
-                        usdt = [d for d in data if d["symbol"].endswith("USDT")]
-                        usdt.sort(key=lambda x: float(x.get("quoteVolume", 0)), reverse=True)
-                        return [d["symbol"] for d in usdt[:50]]
-        except Exception as e:
-            logger.error(f"DataSeeder symbol xato: {e}")
+            from core.binance_connector import connector
+            symbols = getattr(connector, "symbols", [])
+            if symbols:
+                return symbols
+        except Exception:
+            pass
         return []
 
     async def _fetch_trades(self, symbol):
@@ -98,7 +89,7 @@ class DataSeeder:
                         self._banned = True
                         return []
                     if resp.status == 429:
-                        await retry_handler.handle_429(resp)
+                        self._banned = True
                         return []
                     if resp.status == 200:
                         return await resp.json()
