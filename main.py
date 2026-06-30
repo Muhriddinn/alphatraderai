@@ -45,6 +45,7 @@ from modules.data_collector import data_collector
 from modules.prediction_engine import prediction_engine
 from modules.bookmap_engine import bookmap_engine
 from modules.pre_signal_detector import pre_signal_detector
+from modules.data_seeder import data_seeder
 
 from bot.telegram_bot import bot
 from db.models import init_db
@@ -282,6 +283,9 @@ class CryptoMonitorApp:
 
         await self.connector.start()           # Connector oxirida (symbollarni beradi)
         await self.top_report.start()
+
+        # Data Seeder — tarixiy ma'lumotlarni yuklaydi (CVD, Volume, Liq)
+        await data_seeder.start()
 
         self.running = True
         logger.info("✅ Barcha modullar ishga tushdi!")
