@@ -45,23 +45,32 @@ class DataSeeder:
             logger.info(f"✅ DataSeeder trades: {total_trades} trade yuklandi")
 
             liq_count = await self._seed_liquidations()
-            logger.info(f"✅ DataSeeder liquidations: {liq_count} ta likvidatsiya yuklandi")
+            logger.info(f"✅ DataSeeder liquidations: {liq_count} ta 7 kunlik likvidatsiya yuklandi")
+
+            kline_count = await self._seed_klines()
+            logger.info(f"✅ DataSeeder klines: {kline_count} ta 7 kunlik kline yuklandi")
 
         except Exception as e:
             logger.error(f"DataSeeder xatolik: {e}")
 
     async def _seed_liquidations(self):
         try:
-            from modules.liquidation_scanner import liq_aggregator
             count = 0
             async with aiohttp.ClientSession() as session:
                 url = "https://fapi.binance.com/fapi/v1/allForceOrders"
-                for symbol in ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
+                top_symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
                                "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT",
-                               "MATICUSDT", "UNIUSDT", "LTCUSDT", "ATOMUSDT", "NEARUSDT"]:
+                               "MATICUSDT", "UNIUSDT", "LTCUSDT", "ATOMUSDT", "NEARUSDT",
+                               "APTUSDT", "ARBUSDT", "OPUSDT", "SUIUSDT", "SEIUSDT"]
+
+                now_ms = int(time.time() * 1000)
+                seven_days_ms = 7 * 24 * 60 * 60 * 1000
+                start_ms = now_ms - seven_days_ms
+
+                for symbol in top_symbols:
                     try:
-                        params = {"symbol": symbol, "limit": 100}
-                        async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                        params = {"symbol": symbol, "limit": 1000, "startTime": start_ms}
+                        async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=15)) as resp:
                             if resp.status == 200:
                                 data = await resp.json()
                                 for order in data:
@@ -76,6 +85,29 @@ class DataSeeder:
             return count
         except Exception as e:
             logger.error(f"Liquidation seed xatolik: {e}")
+            return 0
+
+    async def _seed_klines(self):
+        try:
+            count = 0
+            async with aiohttp.ClientSession() as session:
+                url = "https://fapi.binance.com/fapi/v1/klines"
+                top_symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
+                               "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT"]
+
+                for symbol in top_symbols:
+                    try:
+                        params = {"symbol": symbol, "interval": "1h", "limit": 168}
+                        async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                            if resp.status == 200:
+                                data = await resp.json()
+                                count += len(data)
+                                await asyncio.sleep(0.1)
+                    except Exception:
+                        continue
+            return count
+        except Exception as e:
+            logger.error(f"Kline seed xatolik: {e}")
             return 0
 
     async def _get_top_symbols(self):
