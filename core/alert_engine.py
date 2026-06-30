@@ -578,7 +578,69 @@ class AlertEngine:
             event.direction.value, event.volume_usdt,
             time.time()
         )
+
+        # DARHOL whale signal yuborish (CEXTrack style)
+        await self._send_whale_alert(event)
+
         await self._add_event(event.symbol, event.exchange, "whale", event)
+
+    async def _send_whale_alert(self, event: WhaleEvent):
+        try:
+            from bot.telegram_bot import bot
+            from db.models import AsyncSessionFactory, User
+            from sqlalchemy import select
+
+            extra = getattr(event, "extra", {}) or {}
+            vol_24h = extra.get("volume_24h", 0) or 0
+            vol_pct = (event.volume_usdt / vol_24h * 100) if vol_24h > 0 else 0
+
+            if event.direction and event.direction.value == "neutral":
+                emoji = "🤔"
+                dir_word = "activity"
+            elif hasattr(event, "buy_volume") and event.buy_volume > event.sell_volume:
+                emoji = "💰"
+                dir_word = "buying"
+            elif hasattr(event, "sell_volume") and event.sell_volume > event.buy_volume:
+                emoji = "💸"
+                dir_word = "selling"
+            else:
+                emoji = "🤔"
+                dir_word = "activity"
+
+            exchange_name = "Binance Futures" if "binance" in str(event.exchange).lower() else str(event.exchange).replace("Exchange.", "")
+            symbol_short = event.symbol.replace('USDT', '')
+
+            elapsed = getattr(event, "duration_seconds", 0) or 0
+            if elapsed < 60:
+                time_str = f"{int(elapsed)} sec"
+            elif elapsed < 3600:
+                time_str = f"{int(elapsed/60)} min"
+            else:
+                time_str = f"{int(elapsed/3600)} h"
+
+            text = (
+                f"🎰 #{symbol_short} {dir_word} {emoji} "
+                f"{fmt(event.volume_usdt)} in {time_str} ({vol_pct:.0f}%) on {exchange_name}\n"
+                f"P: {event.price_change_pct:+.2f}%\n"
+                f"Vol 24h: {fmt(vol_24h) if vol_24h > 0 else '—'}"
+            )
+
+            async with AsyncSessionFactory() as db:
+                result = await db.execute(
+                    select(User.telegram_id).where(User.is_active == True)
+                )
+                user_ids = [row[0] for row in result.fetchall()]
+
+            from telegram.constants import ParseMode
+            tasks = [
+                bot.app.bot.send_message(chat_id=uid, text=text, parse_mode=ParseMode.HTML)
+                for uid in user_ids
+            ]
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+                logger.info(f"🐋 Whale signal yuborildi: {event.symbol} → {len(user_ids)} foydalanuvchi")
+        except Exception as e:
+            logger.error(f"Whale alert xatolik: {e}")
 
     async def on_funding_event(self, event: FundingEvent):
         logger.info(f"💰 Funding: {event.symbol} {event.funding_rate:+.4f}%")
