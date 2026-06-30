@@ -210,6 +210,23 @@ def build_short_signal(
     lines.append(f"  Imbalance: {imbalance:.1f}x {ob_bias}")
     lines.append("")
 
+    # ── LIQ ZONES ────────────────────────────────────
+    liq_long = extra.get("liq_zone_long", "—")
+    liq_short = extra.get("liq_zone_short", "—")
+    if liq_long != "—" or liq_short != "—":
+        lines.append(f"🧊 LIQ ZONES: Long {liq_long} | Short {liq_short}")
+
+    # ── S/R ──────────────────────────────────────────
+    sr = extra.get("sr_levels", {})
+    if sr:
+        r_levels = sr.get("resistance", [])
+        s_levels = sr.get("support", [])
+        r_str = " | ".join([f"{fmt_price(r['price'])} ({r['age']})" for r in r_levels[:3]]) if r_levels else "—"
+        s_str = " | ".join([f"{fmt_price(s['price'])} ({s['age']})" for s in s_levels[:3]]) if s_levels else "—"
+        lines.append("📊 S/R")
+        lines.append(f"  ▲ {r_str}")
+        lines.append(f"  ▼ {s_str}")
+
     # ── VOLUME + CVD ─────────────────────────────────
     c5m = (price_changes.get("change_5m", 0) if price_changes else 0) or extra.get("price_change_5m", 0) or 0
     c1h = (price_changes.get("change_1h", 0) if price_changes else 0) or extra.get("price_change_1h", 0) or 0
@@ -402,6 +419,27 @@ def build_full_signal(
         lines.append("📖 <b>ORDERBOOK</b>")
         lines.append(f"  Buy: {buy_price} ({buy_usdt}) | Sell: {sell_price} ({sell_usdt})")
         lines.append(f"  Imbalance: {imbalance:.1f}x {bias}")
+        lines.append("")
+
+    # ── LIQ ZONES (batafsil) ────────────────────────
+    liq_long = extra.get("liq_zone_long", "—")
+    liq_short = extra.get("liq_zone_short", "—")
+    if liq_long != "—" or liq_short != "—":
+        lines.append("🧊 <b>LIQUIDATION ZONES</b>")
+        lines.append(f"  Long danger: {liq_long}")
+        lines.append(f"  Short danger: {liq_short}")
+        lines.append("")
+
+    # ── S/R (batafsil) ──────────────────────────────
+    sr = extra.get("sr_levels", {})
+    if sr:
+        r_levels = sr.get("resistance", [])
+        s_levels = sr.get("support", [])
+        r_str = " | ".join([f"{fmt_price(r['price'])} ({r['age']})" for r in r_levels[:3]]) if r_levels else "—"
+        s_str = " | ".join([f"{fmt_price(s['price'])} ({s['age']})" for s in s_levels[:3]]) if s_levels else "—"
+        lines.append("📊 <b>SUPPORT / RESISTANCE</b>")
+        lines.append(f"  ▲ {r_str}")
+        lines.append(f"  ▼ {s_str}")
         lines.append("")
 
     # ── VOLUME + CVD + TAKER ─────────────────────────

@@ -16,12 +16,12 @@ BINANCE_KLINES_URL = "https://fapi.binance.com/fapi/v1/klines"
 
 # Foydalanuvchi tanlay oladigan timeframe'lar: key -> (Binance interval, shamlar soni, tugma matni)
 TIMEFRAMES = {
-    "1m":  ("1m", 200, "1m"),
-    "5m":  ("5m", 200, "5m"),
-    "15m": ("15m", 200, "15m"),
-    "1h":  ("1h", 200, "1H"),
-    "4h":  ("4h", 200, "4H"),
-    "1d":  ("1d", 200, "1D"),
+    "1m":  ("1m", 150, "1m"),
+    "5m":  ("5m", 150, "5m"),
+    "15m": ("15m", 150, "15m"),
+    "1h":  ("1h", 150, "1H"),
+    "4h":  ("4h", 150, "4H"),
+    "1d":  ("1d", 150, "1D"),
 }
 
 # Signal xabariga avtomatik biriktiriladigan default grafik — H4, toza (chizmasiz)

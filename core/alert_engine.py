@@ -39,6 +39,18 @@ def fmt(v: float) -> str:
     return f"{v:.0f}$"
 
 
+def _fmt_price(p: float) -> str:
+    if p >= 10000:
+        return f"{p:,.0f}"
+    elif p >= 100:
+        return f"{p:,.2f}"
+    elif p >= 1:
+        return f"{p:.4f}"
+    elif p > 0:
+        return f"{p:.6f}"
+    return "—"
+
+
 class AlertEngine:
     AGGREGATE_WINDOW = 10  # seconds
 
@@ -618,12 +630,56 @@ class AlertEngine:
             else:
                 time_str = f"{int(elapsed/3600)} h"
 
-            text = (
-                f"🎰 #{symbol_short} {dir_word} {emoji} "
-                f"{fmt(event.volume_usdt)} in {time_str} ({vol_pct:.0f}%) on {exchange_name}\n"
-                f"P: {event.price_change_pct:+.2f}%\n"
-                f"Vol 24h: {fmt(vol_24h) if vol_24h > 0 else '—'}"
-            )
+            lines = []
+            lines.append(f"🎰 #{symbol_short} {dir_word} {emoji} {fmt(event.volume_usdt)} in {time_str} ({vol_pct:.0f}%) on {exchange_name}")
+            lines.append(f"P: {event.price_change_pct:+.2f}%")
+            lines.append(f"Vol 24h: {fmt(vol_24h) if vol_24h > 0 else '—'}")
+            lines.append("")
+
+            oi_usdt = extra.get("oi_usdt", 0) or 0
+            oi_change = extra.get("oi_change_pct", 0) or 0
+            if oi_usdt > 0:
+                oi_ico = "▲" if oi_change > 0 else "▼"
+                lines.append(f"📊 OI: {fmt(oi_usdt)} {oi_ico} {oi_change:+.1f}%")
+
+            funding = extra.get("funding_rate", None)
+            if funding is not None:
+                fr_ico = "🔴" if funding > 0 else "🟢"
+                lines.append(f"{fr_ico} Funding: {funding:+.4f}%")
+
+            lines.append("")
+
+            ob_buy = extra.get("ob_buy_walls", [])
+            ob_sell = extra.get("ob_sell_walls", [])
+            imbalance = extra.get("ob_imbalance", 1.0)
+            if ob_buy or ob_sell:
+                buy_price = _fmt_price(ob_buy[0]["price"]) if ob_buy else "—"
+                buy_usdt = fmt(ob_buy[0]["usdt"]) if ob_buy else "—"
+                sell_price = _fmt_price(ob_sell[0]["price"]) if ob_sell else "—"
+                sell_usdt = fmt(ob_sell[0]["usdt"]) if ob_sell else "—"
+                ob_bias = "BUY 🟢" if imbalance >= 1 else "SELL 🔴"
+                lines.append("📖 ORDERBOOK")
+                lines.append(f"  Buy: {buy_price} ({buy_usdt}) | Sell: {sell_price} ({sell_usdt})")
+                lines.append(f"  Imbalance: {imbalance:.1f}x {ob_bias}")
+                lines.append("")
+
+            liq_zones = extra.get("liq_zones", {})
+            if liq_zones:
+                long_zone = liq_zones.get("long", "—")
+                short_zone = liq_zones.get("short", "—")
+                lines.append(f"🧊 LIQ ZONES: Long {long_zone} | Short {short_zone}")
+
+            sr = extra.get("sr_levels", {})
+            if sr:
+                r_levels = sr.get("resistance", [])
+                s_levels = sr.get("support", [])
+                r_str = " | ".join([f"{r['price']} ({r['age']})" for r in r_levels[:3]]) if r_levels else "—"
+                s_str = " | ".join([f"{s['price']} ({s['age']})" for s in s_levels[:3]]) if s_levels else "—"
+                lines.append("📊 S/R")
+                lines.append(f"  ▲ {r_str}")
+                lines.append(f"  ▼ {s_str}")
+
+            text = "\n".join(lines)
 
             async with AsyncSessionFactory() as db:
                 result = await db.execute(
