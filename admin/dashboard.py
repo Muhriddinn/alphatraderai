@@ -5,7 +5,7 @@ FastAPI-based admin panel
 import asyncio
 from datetime import datetime
 from typing import Optional
-from fastapi import FastAPI, Request, Depends, HTTPException, WebSocket
+from fastapi import FastAPI, Request, Depends, HTTPException, WebSocket, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import orjson
@@ -208,9 +208,16 @@ loadHealth();
 """
 
 
-@app.get("/", response_class=HTMLResponse)
-async def admin_dashboard():
-    return ADMIN_HTML
+@app.get("/")
+@app.head("/")
+async def root():
+    return Response(content=ADMIN_HTML, media_type="text/html")
+
+@app.head("/api/health")
+async def health_head():
+    return Response()
+
+
 
 
 @app.get("/api/stats")
