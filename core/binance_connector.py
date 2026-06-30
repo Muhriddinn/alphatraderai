@@ -76,19 +76,32 @@ class BinanceFuturesConnector:
         os.makedirs("logs", exist_ok=True)
         cache_file = "logs/exchange_info.json"
         data = None
-        try:
-            await rate_limiter.acquire()
-            async with self._session.get(f"{BINANCE_FUTURES_REST}/fapi/v1/exchangeInfo") as resp:
-                if resp.status == 429:
-                    await retry_handler.handle_429(resp)
-                    return await self._discover_symbols()
-                if resp.status == 200:
-                    data = await resp.json()
-                    with open(cache_file, "w") as f:
-                        json.dump(data, f)
-                    logger.info("📥 exchangeInfo cached to file")
-        except Exception as e:
-            logger.warning(f"exchangeInfo API xato: {e}")
+
+        for attempt in range(3):
+            try:
+                await rate_limiter.acquire()
+                timeout = aiohttp.ClientTimeout(total=15)
+                async with self._session.get(
+                    f"{BINANCE_FUTURES_REST}/fapi/v1/exchangeInfo",
+                    timeout=timeout
+                ) as resp:
+                    if resp.status == 429:
+                        await retry_handler.handle_429(resp)
+                        continue
+                    if resp.status == 200:
+                        data = await resp.json()
+                        with open(cache_file, "w") as f:
+                            json.dump(data, f)
+                        logger.info("📥 exchangeInfo cached to file")
+                        break
+                    else:
+                        logger.warning(f"exchangeInfo HTTP {resp.status}")
+            except asyncio.TimeoutError:
+                logger.warning(f"exchangeInfo timeout (attempt {attempt+1}/3)")
+                await asyncio.sleep(2)
+            except Exception as e:
+                logger.warning(f"exchangeInfo API xato (attempt {attempt+1}/3): {e}")
+                await asyncio.sleep(2)
 
         if data is None:
             try:
@@ -98,6 +111,8 @@ class BinanceFuturesConnector:
             except Exception as e:
                 logger.error(f"exchangeInfo cache ham yo'q: {e}")
                 self.symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
+                for sym in self.symbols:
+                    await state_manager.add_symbol("binance", sym, "futures")
                 return
 
         self.symbols = [
