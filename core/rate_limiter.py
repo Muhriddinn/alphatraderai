@@ -8,7 +8,7 @@ from loguru import logger
 
 
 class RateLimiter:
-    def __init__(self, max_per_minute: int = 2000):
+    def __init__(self, max_per_minute: int = 800):
         self._max = max_per_minute
         self._window: list[float] = []
         self._lock = asyncio.Lock()
@@ -95,5 +95,5 @@ class RetryHandler:
         return None
 
 
-rate_limiter = RateLimiter(max_per_minute=2000)
+rate_limiter = RateLimiter(max_per_minute=800)
 retry_handler = RetryHandler()

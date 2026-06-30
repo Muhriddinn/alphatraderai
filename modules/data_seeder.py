@@ -91,6 +91,10 @@ class DataSeeder:
             async with aiohttp.ClientSession() as session:
                 url = "https://fapi.binance.com/fapi/v1/ticker/24hr"
                 async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 418:
+                        logger.error("⛔ DataSeeder: IP BAN (418) — 120 soniya kutish")
+                        await asyncio.sleep(120)
+                        return await self._get_all_symbols()
                     if resp.status == 429:
                         await retry_handler.handle_429(resp)
                         return await self._get_all_symbols()
@@ -110,6 +114,10 @@ class DataSeeder:
                 url = "https://fapi.binance.com/fapi/v1/trades"
                 params = {"symbol": symbol, "limit": 1000}
                 async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 418:
+                        logger.warning(f"418 ban on trades for {symbol}")
+                        await asyncio.sleep(120)
+                        return await self._fetch_recent_trades(symbol)
                     if resp.status == 429:
                         await retry_handler.handle_429(resp)
                         return await self._fetch_recent_trades(symbol)

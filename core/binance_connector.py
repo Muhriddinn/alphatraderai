@@ -85,6 +85,10 @@ class BinanceFuturesConnector:
                     f"{BINANCE_FUTURES_REST}/fapi/v1/exchangeInfo",
                     timeout=timeout
                 ) as resp:
+                    if resp.status == 418:
+                        logger.error("⛔ Binance IP BAN (418) — 120 soniya kutish...")
+                        await asyncio.sleep(120)
+                        continue
                     if resp.status == 429:
                         await retry_handler.handle_429(resp)
                         continue
@@ -301,8 +305,11 @@ class BinanceFuturesConnector:
             await rate_limiter.acquire()
             url = f"{BINANCE_FUTURES_REST}/fapi/v1/openInterest"
             async with self._session.get(url, params={"symbol": symbol}) as resp:
-                if resp.status == 429:
-                    await retry_handler.handle_429(resp)
+                if resp.status in (418, 429):
+                    if resp.status == 418:
+                        await asyncio.sleep(120)
+                    else:
+                        await retry_handler.handle_429(resp)
                     return await self._fetch_oi(symbol)
                 if resp.status == 200:
                     data = await resp.json()
@@ -360,6 +367,10 @@ class BinanceFuturesConnector:
                 await rate_limiter.acquire()
                 url = f"{BINANCE_FUTURES_REST}/fapi/v1/premiumIndex"
                 async with self._session.get(url) as resp:
+                    if resp.status == 418:
+                        logger.error("⛔ Funding poll: IP BAN (418)")
+                        await asyncio.sleep(120)
+                        continue
                     if resp.status == 429:
                         await retry_handler.handle_429(resp)
                         continue
@@ -440,8 +451,11 @@ class BinanceFuturesConnector:
             await rate_limiter.acquire()
             url = f"{BINANCE_FUTURES_REST}/fapi/v1/depth"
             async with self._session.get(url, params={"symbol": symbol, "limit": limit}) as resp:
-                if resp.status == 429:
-                    await retry_handler.handle_429(resp)
+                if resp.status in (418, 429):
+                    if resp.status == 418:
+                        await asyncio.sleep(120)
+                    else:
+                        await retry_handler.handle_429(resp)
                     return await self.get_orderbook(symbol, limit)
                 if resp.status == 200:
                     return await resp.json()
@@ -461,10 +475,8 @@ class BinanceFuturesConnector:
         loaded = 0
         errors = 0
         total = len(self.symbols)
-        # Batch: 10 ta coin parallel — tezroq bootstrap
-        # Har bir symbol ~27 weight (ticker 5 + premiumIndex 10 + OI 1 + klines×5 10 + depth 1)
-        # 10 symbol/batch = 270 weight/burst. 3s delay = ~5400 weight/min
-        batch_size = 10
+        # Batch: 5 ta coin parallel — xotira tejash
+        batch_size = 5
 
         for start in range(0, total, batch_size):
             batch = self.symbols[start:start + batch_size]
@@ -483,7 +495,7 @@ class BinanceFuturesConnector:
                     errors += 1
             if (start // batch_size) % 10 == 0:
                 logger.info(f"📊 Bootstrap: {start + len(batch)}/{total} yuklandi...")
-            await asyncio.sleep(3.0)
+            await asyncio.sleep(5.0)
 
         logger.info(f"✅ Bootstrap tugadi: {loaded}/{total} symbol ({errors} errors)")
 
@@ -508,6 +520,10 @@ class BinanceFuturesConnector:
                 async def fetch(name, url):
                     try:
                         async with s.get(url, timeout=aiohttp.ClientTimeout(total=10)) as r:
+                            if r.status == 418:
+                                logger.warning(f"418 ban on {name} for {symbol}")
+                                await asyncio.sleep(120)
+                                return (name, None)
                             if r.status == 200:
                                 return (name, await r.json())
                     except: pass
@@ -616,8 +632,11 @@ class BinanceFuturesConnector:
             url = f"{BINANCE_FUTURES_REST}/fapi/v1/klines"
             params = {"symbol": symbol, "interval": interval, "limit": limit}
             async with self._session.get(url, params=params) as resp:
-                if resp.status == 429:
-                    await retry_handler.handle_429(resp)
+                if resp.status in (418, 429):
+                    if resp.status == 418:
+                        await asyncio.sleep(120)
+                    else:
+                        await retry_handler.handle_429(resp)
                     return await self.get_klines(symbol, interval, limit)
                 if resp.status == 200:
                     return await resp.json()
