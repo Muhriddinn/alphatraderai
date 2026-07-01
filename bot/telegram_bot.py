@@ -242,11 +242,14 @@ class CryptoMonitorBot:
         await self.app.initialize()
         await self.app.start()
         # Delete any existing webhook first
-        try:
-            await self.app.bot.delete_webhook(drop_pending_updates=True)
-            logger.info("🧹 Old webhook deleted")
-        except Exception:
-            pass
+        for attempt in range(3):
+            try:
+                await self.app.bot.delete_webhook(drop_pending_updates=True)
+                logger.info("🧹 Old webhook deleted")
+                break
+            except Exception as e:
+                logger.warning(f"Webhook delete attempt {attempt+1}: {e}")
+                await asyncio.sleep(2)
         await self.app.updater.start_polling(drop_pending_updates=True)
         logger.info("✅ Telegram Bot v3 started")
 
