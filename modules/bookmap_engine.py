@@ -14,7 +14,7 @@ QILADIGANLARI:
 import asyncio
 import time
 import json
-import websockets
+import aiohttp
 import aiosqlite
 from datetime import datetime
 from collections import defaultdict
@@ -165,22 +165,31 @@ class BookmapEngine:
 
     async def _ws_loop(self, url: str, symbols: list[str]):
         """WebSocket ulanish — avtomatik qayta ulanish"""
-        while self._running:
-            try:
-                async with websockets.connect(url, ping_interval=20) as ws:
-                    logger.debug(f"Bookmap WS connected: {len(symbols)} symbols")
-                    async for msg in ws:
-                        if not self._running:
-                            break
-                        try:
-                            data = json.loads(msg)
-                            await self._on_depth_message(data)
-                        except Exception as e:
-                            logger.debug(f"Bookmap WS parse error: {e}")
-            except Exception as e:
-                if self._running:
-                    logger.debug(f"Bookmap WS reconnecting: {e}")
-                    await asyncio.sleep(5)
+        async with aiohttp.ClientSession() as session:
+            while self._running:
+                try:
+                    async with session.ws_connect(
+                        url,
+                        heartbeat=20,
+                        timeout=30,
+                        max_msg_size=10 * 1024 * 1024
+                    ) as ws:
+                        logger.debug(f"Bookmap WS connected: {len(symbols)} symbols")
+                        async for msg in ws:
+                            if msg.type == aiohttp.WSMsgType.TEXT:
+                                if not self._running:
+                                    break
+                                try:
+                                    data = json.loads(msg.data)
+                                    await self._on_depth_message(data)
+                                except Exception as e:
+                                    logger.debug(f"Bookmap WS parse error: {e}")
+                            elif msg.type in (aiohttp.WSMsgType.ERROR, aiohttp.WSMsgType.CLOSED):
+                                break
+                except Exception as e:
+                    if self._running:
+                        logger.debug(f"Bookmap WS reconnecting: {e}")
+                        await asyncio.sleep(5)
 
     async def _on_depth_message(self, data: dict):
         """WebSocket dan depth message kelganda"""
