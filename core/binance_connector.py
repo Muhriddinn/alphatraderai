@@ -459,8 +459,8 @@ class BinanceFuturesConnector:
                             logger.info(f"📩 MarkPrice REST poll #{poll_count}: {len(data)} symbols")
                         await state_manager.increment_stat("ws_messages")
                         for item in data:
-                            symbol = item["s"]
-                            price = float(item["p"])
+                            symbol = item.get("symbol") or item.get("s")
+                            price = float(item.get("price") or item.get("p", 0))
                             await state_manager.set_ticker(
                                 "binance", symbol,
                                 {"price": price, "ts": time.time() * 1000}

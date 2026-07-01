@@ -143,6 +143,11 @@ class DataCollector:
         async with aiosqlite.connect(self._db_path) as db:
             await db.executescript(CREATE_TABLE)
             await db.executescript(CREATE_SIGNALS_TABLE)
+            # Migration: add cvd_15m column if missing
+            try:
+                await db.execute("ALTER TABLE market_snapshots ADD COLUMN cvd_15m REAL DEFAULT 0")
+            except Exception:
+                pass
             await db.commit()
         logger.info(f"✅ Data DB ready: {self._db_path}")
 
