@@ -25,6 +25,7 @@ class StateManager:
         self._cache_max = 2000
         self._write_queue: list[tuple] = []
         self._flush_task: Optional[asyncio.Task] = None
+        self._counter_dirty: bool = False
 
     async def connect(self):
         os.makedirs(os.path.dirname(self._db_path), exist_ok=True)
@@ -205,8 +206,9 @@ class StateManager:
                 "INSERT INTO counters(name, value) VALUES(?,?) ON CONFLICT(name) DO UPDATE SET value=value+?",
                 (name, amount, amount)
             )
-        except Exception:
-            pass
+            self._counter_dirty = True
+        except Exception as e:
+            logger.debug(f"Counter inc error ({name}): {e}")
 
     async def set_ticker(self, exchange, symbol, data):
         await self._kv_set(self._key(exchange, symbol, "ticker"), data)
