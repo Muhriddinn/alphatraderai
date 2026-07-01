@@ -239,17 +239,38 @@ class CryptoMonitorBot:
             logger.warning(f"set_my_commands error: {e}")
 
         self._running = True
+
+        # 1-QADAM: Webhook ni to'g'ridan-to'g'ri Telegram API dan o'chir
+        import httpx
+        token = self.app.bot.token
+        try:
+            async with httpx.AsyncClient() as client:
+                # Webhook ni o'chir
+                r1 = await client.get(f"https://api.telegram.org/bot{token}/deleteWebhook?drop_pending_updates=true")
+                data1 = r1.json()
+                logger.info(f"🧹 deleteWebhook: {data1}")
+
+                # Webhook mavjudligini tekshir
+                r2 = await client.get(f"https://api.telegram.org/bot{token}/getWebhookInfo")
+                data2 = r2.json()
+                webhook_url = data2.get("result", {}).get("url", "")
+                if webhook_url:
+                    logger.warning(f"⚠️ Webhook still set: {webhook_url}")
+                else:
+                    logger.info("✅ No webhook set — polling mumkin")
+
+                # Pending updatelarni tozala
+                r3 = await client.get(f"https://api.telegram.org/bot{token}/getUpdates?offset=-1&timeout=0")
+                data3 = r3.json()
+                logger.info(f"🧹 Pending updates cleared: {data3.get('ok', False)}")
+        except Exception as e:
+            logger.warning(f"Webhook cleanup xato: {e}")
+
+        await asyncio.sleep(2)
+
+        # 2-QADAM: Bot ni ishga tushir
         await self.app.initialize()
         await self.app.start()
-        # Delete any existing webhook first
-        for attempt in range(3):
-            try:
-                await self.app.bot.delete_webhook(drop_pending_updates=True)
-                logger.info("🧹 Old webhook deleted")
-                break
-            except Exception as e:
-                logger.warning(f"Webhook delete attempt {attempt+1}: {e}")
-                await asyncio.sleep(2)
         await self.app.updater.start_polling(drop_pending_updates=True)
         logger.info("✅ Telegram Bot v3 started")
 
