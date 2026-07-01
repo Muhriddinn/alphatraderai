@@ -1,0 +1,8 @@
+__pycache__
+*.pyc
+.git
+.gitignore
+*.md
+data/state.db
+data/market_data.db
+.env
