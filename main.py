@@ -125,8 +125,9 @@ class CryptoMonitorApp:
 
     async def _on_trade(self, trade):
         await self.volume_scanner.process_trade(trade)
-        # CVD tracker ham trade ma'lumotini olishi kerak
         await cvd_tracker.process_trade(trade)
+        # Barcha trade'larni whale scanner'ga yuborish — burst aniqlash uchun
+        await self.whale_scanner.process_whale_trade(trade)
 
     async def _on_whale_trade(self, trade):
         await self.whale_scanner.process_whale_trade(trade)
