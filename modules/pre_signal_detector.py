@@ -40,7 +40,7 @@ class PreSignalDetector:
                 await self._scan_all()
             except Exception as e:
                 logger.debug(f"PreSignal scan error: {e}")
-            await asyncio.sleep(30)
+            await asyncio.sleep(60)
 
     async def _scan_all(self):
         """Barcha activelarni tekshirish"""
@@ -51,10 +51,10 @@ class PreSignalDetector:
         symbols = list(await state_manager.get_symbols("binance", "futures"))
         now = time.time()
 
-        for symbol in symbols[:200]:
+        for symbol in symbols:
             try:
                 score, reasons, direction = await self._evaluate(symbol, price_tracker, cvd_tracker)
-                if score >= 1 and direction != "NEUTRAL":
+                if score >= 2 and direction != "NEUTRAL":
                     cooldown_key = f"{symbol}:{direction}"
                     last = self._cooldown.get(cooldown_key, 0)
                     if now - last < 600:  # 10 daqiqa cooldown
@@ -103,7 +103,6 @@ class PreSignalDetector:
                 score += 1
                 reasons.append("OI steady+high")
                 # OI oshyapti — history dan solishtirish
-                oi_history = await sm.get_oi_history("binance", symbol, 10)
                 if len(oi_history) >= 2:
                     prev_usdt = oi_history[1].get("oi_usdt", 0)
                     if prev_usdt > 0:
