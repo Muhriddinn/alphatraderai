@@ -437,14 +437,22 @@ class BinanceFuturesConnector:
                     ping_timeout=10,
                     close_timeout=5,
                     max_size=10 * 1024 * 1024
-                ) as ws:
+                )                 as ws:
                     retry_count = 0
+                    msg_count = 0
                     logger.info("🔌 Mark price stream connected")
                     async for raw in ws:
                         if not self._running:
                             break
                         data = orjson.loads(raw)
-                        await state_manager.increment_stat("ws_messages")
+                        msg_count += 1
+                        if msg_count <= 3:
+                            logger.info(f"📩 MarkPrice MSG #{msg_count}: {len(raw)} bytes")
+                        try:
+                            await state_manager.increment_stat("ws_messages")
+                        except Exception as e:
+                            if msg_count <= 3:
+                                logger.warning(f"Counter inc failed: {e}")
                         stream_data = data.get("data", [])
                         for item in stream_data:
                             if item.get("e") == "markPriceUpdate":

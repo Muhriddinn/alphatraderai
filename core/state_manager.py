@@ -206,7 +206,8 @@ class StateManager:
                 "INSERT INTO counters(name, value) VALUES(?,?) ON CONFLICT(name) DO UPDATE SET value=value+?",
                 (name, amount, amount)
             )
-            self._counter_dirty = True
+            await self._db.commit()
+            self._counter_dirty = False
         except Exception as e:
             logger.debug(f"Counter inc error ({name}): {e}")
 
