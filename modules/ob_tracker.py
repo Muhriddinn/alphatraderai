@@ -17,6 +17,7 @@ import aiohttp
 from config.settings import settings
 from core.models import OrderBookEvent, Exchange
 from core.state_manager import state_manager
+from core.rate_limiter import rate_limiter
 
 
 # Devor kamida shu miqdorda bo'lishi kerak (USDT)
@@ -92,6 +93,7 @@ class OrderBookWallTracker:
         url = "https://fapi.binance.com/fapi/v1/depth"
         params = {"symbol": symbol, "limit": 20}
 
+        await rate_limiter.acquire(weight=5)
         async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=5)) as resp:
             if resp.status != 200:
                 return

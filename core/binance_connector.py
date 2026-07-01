@@ -137,6 +137,7 @@ class BinanceFuturesConnector:
     async def _stream_liquidations(self):
         """
         REST poll fallback for liquidations — har 5 soniyada yangi likvidatsiyalarni tekshiradi.
+        Rate limit: 20 weight per call (allForceOrders).
         """
         url = f"{BINANCE_FUTURES_REST}/fapi/v1/allForceOrders"
         last_seen: dict = {}
@@ -144,6 +145,7 @@ class BinanceFuturesConnector:
 
         while self._running:
             try:
+                await rate_limiter.acquire(weight=20)
                 params = {"limit": 20}
                 async with self._session.get(
                     url, params=params,
@@ -206,11 +208,12 @@ class BinanceFuturesConnector:
             logger.debug(f"Liquidation parse error: {e}")
 
     async def _stream_trades_chunked(self):
-        """Stream aggTrades for all symbols in chunks of 150."""
-        chunk_size = 150
+        """Stream aggTrades for top symbols in 2 chunks."""
+        top_symbols = self.symbols[:20]
+        chunk_size = 10
         chunks = [
-            self.symbols[i:i + chunk_size]
-            for i in range(0, len(self.symbols), chunk_size)
+            top_symbols[i:i + chunk_size]
+            for i in range(0, len(top_symbols), chunk_size)
         ]
 
         tasks = [
@@ -231,31 +234,35 @@ class BinanceFuturesConnector:
                 for symbol in symbols[:10]:
                     if not self._running:
                         break
-                    params = {"limit": 5}
-                    if symbol in seen_ids:
-                        params["fromId"] = seen_ids[symbol]
                     try:
-                        async with self._session.get(
-                            f"{base_url}?symbol={symbol}",
-                            params=params,
-                            timeout=aiohttp.ClientTimeout(total=10)
-                        ) as resp:
-                            if resp.status == 200:
-                                trades = await resp.json()
-                                for t in trades:
-                                    if t["T"] > (time.time() - 60) * 1000:
-                                        await state_manager.increment_stat("ws_messages")
-                                        await self._handle_trade({"data": t, "e": "aggTrade"})
+                        await rate_limiter.acquire(weight=1)
+                        params = {"limit": 5}
+                        if symbol in seen_ids:
+                            params["fromId"] = seen_ids[symbol]
+                        try:
+                            async with self._session.get(
+                                f"{base_url}?symbol={symbol}",
+                                params=params,
+                                timeout=aiohttp.ClientTimeout(total=10)
+                            ) as resp:
+                                if resp.status == 200:
+                                    trades = await resp.json()
+                                    for t in trades:
+                                        if t["T"] > (time.time() - 60) * 1000:
+                                            await state_manager.increment_stat("ws_messages")
+                                            await self._handle_trade({"data": t, "e": "aggTrade"})
                                     seen_ids[symbol] = t.get("a", 0)
-                            elif resp.status == 429:
-                                await asyncio.sleep(30)
-                                break
-                        await asyncio.sleep(0.1)
+                                elif resp.status == 429:
+                                    await asyncio.sleep(30)
+                                    break
+                        except Exception:
+                            pass
+                        await asyncio.sleep(1)
                     except Exception:
                         pass
             except Exception as e:
                 logger.debug(f"Trade poll {chunk_id} error: {e}")
-            await asyncio.sleep(5)
+            await asyncio.sleep(15)
 
     async def _handle_trade(self, data: dict):
         try:
@@ -430,12 +437,14 @@ class BinanceFuturesConnector:
     async def _stream_mark_price(self):
         """
         WS REST poll fallback — WS ishlamasa REST dan narx oladi.
+        Rate limit: 1 weight per call, har 5 sekundda.
         """
         url = f"{BINANCE_FUTURES_REST}/fapi/v1/ticker/price"
         poll_count = 0
 
         while self._running:
             try:
+                await rate_limiter.acquire(weight=1)
                 async with self._session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                     if resp.status == 200:
                         data = await resp.json()
@@ -460,7 +469,7 @@ class BinanceFuturesConnector:
                         logger.warning(f"MarkPrice REST poll failed: HTTP {resp.status}")
             except Exception as e:
                 logger.debug(f"MarkPrice poll error: {e}")
-            await asyncio.sleep(3)
+            await asyncio.sleep(5)
 
     async def get_orderbook(self, symbol: str, limit: int = 50) -> Optional[dict]:
         """Fetch order book snapshot via REST"""

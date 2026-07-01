@@ -13,6 +13,7 @@ from loguru import logger
 import aiohttp
 
 from config.settings import settings
+from core.rate_limiter import rate_limiter
 from core.models import (
     MarketAlert, AlertLevel, Exchange, MarketType,
     VolumeEvent, OIEvent, LiquidationEvent, WhaleEvent,
@@ -85,6 +86,7 @@ class AlertEngine:
         if ticker and ticker.get("price", 0) > 0:
             return ticker["price"]
         try:
+            await rate_limiter.acquire(weight=1)
             url = f"https://fapi.binance.com/fapi/v1/ticker/price?symbol={symbol}"
             async with aiohttp.ClientSession() as s:
                 async with s.get(url, timeout=aiohttp.ClientTimeout(total=5)) as r:
@@ -180,6 +182,7 @@ class AlertEngine:
         # ─── OB REST FALLBACK — trackerda data bo'lmasa ─────────
         if not extra["ob_buy_walls"] and not extra["ob_sell_walls"] and price > 0:
             try:
+                await rate_limiter.acquire(weight=5)
                 async with aiohttp.ClientSession() as session_ob:
                     url_ob = f"https://fapi.binance.com/fapi/v1/depth?symbol={symbol}&limit=20"
                     async with session_ob.get(url_ob, timeout=aiohttp.ClientTimeout(total=5)) as rob:
@@ -208,6 +211,7 @@ class AlertEngine:
         try:
             async with aiohttp.ClientSession() as session:
                 # Bittada 3 ta ma'lumot olish (batch)
+                await rate_limiter.acquire(weight=1)
                 url = f"https://fapi.binance.com/fapi/v1/ticker/24hr?symbol={symbol}"
                 async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as r:
                     if r.status == 200:
@@ -217,6 +221,7 @@ class AlertEngine:
                         extra["vol_4h"] = float(d.get("volume", 0))
 
                 # Kline — faqat 5m (qolganlari price_tracker da)
+                await rate_limiter.acquire(weight=1)
                 url_k = f"https://fapi.binance.com/fapi/v1/klines?symbol={symbol}&interval=5m&limit=2"
                 async with session.get(url_k, timeout=aiohttp.ClientTimeout(total=5)) as rk:
                     if rk.status == 200:
