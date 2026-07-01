@@ -77,18 +77,26 @@ class StateManager:
             await self._flush()
 
     async def _flush(self):
-        if not self._write_queue or not self._db:
+        if not self._db:
             return
-        batch = self._write_queue[:]
-        self._write_queue.clear()
+        flushed = False
+        if self._write_queue:
+            batch = self._write_queue[:]
+            self._write_queue.clear()
+            try:
+                await self._db.executemany(
+                    "INSERT OR REPLACE INTO kv(key, value, updated_at) VALUES(?,?,?)",
+                    batch
+                )
+                flushed = True
+            except Exception as e:
+                logger.debug(f"SQLite flush error: {e}")
+        # Always commit counter increments
         try:
-            await self._db.executemany(
-                "INSERT OR REPLACE INTO kv(key, value, updated_at) VALUES(?,?,?)",
-                batch
-            )
             await self._db.commit()
+            flushed = True
         except Exception as e:
-            logger.debug(f"SQLite flush error: {e}")
+            logger.debug(f"SQLite commit error: {e}")
 
     def _key(self, exchange, symbol, data_type):
         return f"crypto:{exchange}:{symbol}:{data_type}"
@@ -197,7 +205,6 @@ class StateManager:
                 "INSERT INTO counters(name, value) VALUES(?,?) ON CONFLICT(name) DO UPDATE SET value=value+?",
                 (name, amount, amount)
             )
-            await self._db.commit()
         except Exception:
             pass
 
