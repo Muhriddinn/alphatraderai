@@ -54,7 +54,7 @@ class PreSignalDetector:
         for symbol in symbols[:200]:
             try:
                 score, reasons, direction = await self._evaluate(symbol, price_tracker, cvd_tracker)
-                if score >= 2 and direction != "NEUTRAL":
+                if score >= 1 and direction != "NEUTRAL":
                     cooldown_key = f"{symbol}:{direction}"
                     last = self._cooldown.get(cooldown_key, 0)
                     if now - last < 600:  # 10 daqiqa cooldown
@@ -117,17 +117,23 @@ class PreSignalDetector:
                             reasons.append(f"OI {oi_change:.1f}%")
                             direction_votes.append("SHORT")
 
-        # ─── 2. VOLUME SPIKE (narx o'zgarmaganida) ───
-        vol_history = await sm.get_oi_history("binance", symbol, 20)
-        if vol_history and len(vol_history) >= 3:
-            recent_vol = vol_history[0].get("oi_usdt", 0)
-            older_vol = vol_history[5].get("oi_usdt", 0) if len(vol_history) >= 5 else 0
-            if older_vol > 0 and recent_vol > older_vol * 1.5 and abs(change_1m) < 0.5:
+        # ─── 2. VOLUME SPIKE (real volume from volume_scanner) ───
+        try:
+            from modules.volume_scanner import volume_scanner
+            vol_key = f"binance:{symbol}"
+            vol_window = volume_scanner._volume_windows.get(vol_key, [])
+            import time as _time
+            now_ts = _time.time()
+            vol_5m = sum(v["usdt"] for v in vol_window if now_ts - v["ts"] <= 300)
+            vol_prev = sum(v["usdt"] for v in vol_window if 300 < now_ts - v["ts"] <= 600)
+            if vol_prev > 0 and vol_5m > vol_prev * 1.3 and abs(change_1m) < 0.5:
                 score += 1
-                reasons.append(f"Vol spike {recent_vol/older_vol:.1f}x")
-                if recent_vol > older_vol * 2:
+                reasons.append(f"Vol spike {vol_5m/vol_prev:.1f}x")
+                if vol_5m > vol_prev * 2:
                     score += 1
                     reasons.append("Massive vol")
+        except Exception:
+            pass
 
         # ─── 3. OB IMBALANCE ───
         from modules.bookmap_engine import bookmap_engine

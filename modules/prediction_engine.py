@@ -405,9 +405,18 @@ class PredictionEngine:
         funding_current, funding_prev = await state_manager.get_funding("binance", symbol)
         funding_rate = funding_current.get("rate", 0) if funding_current else 0
 
-        vol_5m = sum(v["usdt"] for v in price_tracker._history.get(symbol, []) if time.time() - v[1] <= 300)
-        vol_5m_prev = sum(v["usdt"] for v in price_tracker._history.get(symbol, []) if 300 < time.time() - v[1] <= 600)
-        volume_spike = ((vol_5m - vol_5m_prev) / vol_5m_prev * 100) if vol_5m_prev > 0 else 0
+        volume_spike = 0.0
+        try:
+            from modules.volume_scanner import volume_scanner
+            vol_key = f"binance:{symbol}"
+            vol_window = volume_scanner._volume_windows.get(vol_key, [])
+            now_ts = time.time()
+            vol_5m = sum(v["usdt"] for v in vol_window if now_ts - v["ts"] <= 300)
+            vol_5m_prev = sum(v["usdt"] for v in vol_window if 300 < now_ts - v["ts"] <= 600)
+            if vol_5m_prev > 0:
+                volume_spike = (vol_5m - vol_5m_prev) / vol_5m_prev * 100
+        except Exception:
+            pass
 
         ob_imbalance = 1.0
         try:

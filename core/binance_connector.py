@@ -211,8 +211,8 @@ class BinanceFuturesConnector:
             logger.debug(f"Liquidation parse error: {e}")
 
     async def _stream_trades_chunked(self):
-        """Stream aggTrades for top symbols in 2 chunks."""
-        top_symbols = self.symbols[:20]
+        """Stream aggTrades for top 50 symbols in 5 chunks."""
+        top_symbols = self.symbols[:50]
         chunk_size = 10
         chunks = [
             top_symbols[i:i + chunk_size]

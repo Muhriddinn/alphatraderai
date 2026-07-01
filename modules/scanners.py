@@ -132,12 +132,12 @@ class WhaleScanner:
                     if total > 50_000:
                         logger.debug(f"🐋 {symbol} {win_label}: total=${total:,.0f} buy=${total_buy:,.0f} sell=${total_sell:,.0f}")
 
-                    # CEXTrack format: 5%+ 24h hajm YOKI katta USDT
+                    # CEXTrack format: 2%+ 24h hajm YOKI katta USDT
                     is_big_coin = symbol in ("BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT")
-                    min_usdt = 50_000 if is_big_coin else 30_000
+                    min_usdt = 30_000 if is_big_coin else 10_000
 
-                    # 5% dan kichik VA katta USDT ham bo'lmasa — chiqarmaymiz
-                    if vol_pct < 5.0 and total < min_usdt:
+                    # 2% dan kichik VA katta USDT ham bo'lmasa — chiqarmaymiz
+                    if vol_pct < 2.0 and total < min_usdt:
                         continue
                     # Hajm 0 yoki manfiy bo'lsa — chiqarmaymiz
                     if volume_24h <= 0:
