@@ -135,36 +135,39 @@ class BinanceFuturesConnector:
             await self.callbacks["symbols_ready"](self.symbols)
 
     async def _stream_liquidations(self):
-        """Subscribe to all-market liquidation orders stream."""
-        url = f"{BINANCE_FUTURES_WS}?streams=!forceOrder@arr"
+        """
+        REST poll fallback for liquidations — har 5 soniyada yangi likvidatsiyalarni tekshiradi.
+        """
+        url = f"{BINANCE_FUTURES_REST}/fapi/v1/allForceOrders"
+        last_seen: dict = {}
         retry_count = 0
-        base_delay = settings.ws_reconnect_delay
 
         while self._running:
             try:
-                async with self._session.ws_connect(
-                    url,
-                    heartbeat=20,
-                    timeout=30,
-                    max_msg_size=10 * 1024 * 1024
-                ) as ws:
-                    retry_count = 0
-                    logger.info("🔌 Liquidation stream connected")
-                    async for msg in ws:
-                        if msg.type == aiohttp.WSMsgType.TEXT:
-                            if not self._running:
-                                break
-                            await self._handle_liquidation(orjson.loads(msg.data))
-                            await state_manager.increment_stat("ws_messages")
-                        elif msg.type in (aiohttp.WSMsgType.ERROR, aiohttp.WSMsgType.CLOSED):
-                            break
-
+                params = {"limit": 20}
+                async with self._session.get(
+                    url, params=params,
+                    timeout=aiohttp.ClientTimeout(total=15)
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        retry_count = 0
+                        for order in data:
+                            key = f"{order['symbol']}_{order['time']}"
+                            if key not in last_seen:
+                                last_seen[key] = True
+                                await self._handle_liquidation({"data": {"o": order, "e": "forceOrder"}})
+                                await state_manager.increment_stat("ws_messages")
+                        if len(last_seen) > 500:
+                            keys = list(last_seen.keys())[-200:]
+                            last_seen = {k: True for k in keys}
+                    elif resp.status == 429:
+                        await asyncio.sleep(30)
             except Exception as e:
                 retry_count += 1
-                delay = min(base_delay * (2 ** min(retry_count, 6)), 300)
-                logger.warning(f"Liquidation WS disconnected (retry {retry_count}, {delay}s): {e}")
-                if self._running:
-                    await asyncio.sleep(delay)
+                if retry_count <= 3:
+                    logger.debug(f"Liquidation poll error: {e}")
+            await asyncio.sleep(5)
 
     async def _handle_liquidation(self, data: dict):
         try:
@@ -217,36 +220,42 @@ class BinanceFuturesConnector:
         await asyncio.gather(*tasks, return_exceptions=True)
 
     async def _stream_trades_chunk(self, symbols: list[str], chunk_id: int):
-        streams = "/".join(f"{s.lower()}@aggTrade" for s in symbols)
-        url = f"{BINANCE_FUTURES_WS}?streams={streams}"
-        retry_count = 0
-        base_delay = settings.ws_reconnect_delay
+        """
+        REST poll for aggTrades — faqat top symbollar (rate limit tejash).
+        """
+        base_url = f"{BINANCE_FUTURES_REST}/fapi/v1/aggTrades"
+        seen_ids: dict[str, int] = {}
 
         while self._running:
             try:
-                async with self._session.ws_connect(
-                    url,
-                    heartbeat=20,
-                    timeout=30,
-                    max_msg_size=10 * 1024 * 1024
-                ) as ws:
-                    retry_count = 0
-                    logger.info(f"🔌 Trade stream chunk {chunk_id} connected ({len(symbols)} symbols)")
-                    async for msg in ws:
-                        if msg.type == aiohttp.WSMsgType.TEXT:
-                            if not self._running:
+                for symbol in symbols[:10]:
+                    if not self._running:
+                        break
+                    params = {"limit": 5}
+                    if symbol in seen_ids:
+                        params["fromId"] = seen_ids[symbol]
+                    try:
+                        async with self._session.get(
+                            f"{base_url}?symbol={symbol}",
+                            params=params,
+                            timeout=aiohttp.ClientTimeout(total=10)
+                        ) as resp:
+                            if resp.status == 200:
+                                trades = await resp.json()
+                                for t in trades:
+                                    if t["T"] > (time.time() - 60) * 1000:
+                                        await state_manager.increment_stat("ws_messages")
+                                        await self._handle_trade({"data": t, "e": "aggTrade"})
+                                    seen_ids[symbol] = t.get("a", 0)
+                            elif resp.status == 429:
+                                await asyncio.sleep(30)
                                 break
-                            await state_manager.increment_stat("ws_messages")
-                            await self._handle_trade(orjson.loads(msg.data))
-                        elif msg.type in (aiohttp.WSMsgType.ERROR, aiohttp.WSMsgType.CLOSED):
-                            break
-
+                        await asyncio.sleep(0.1)
+                    except Exception:
+                        pass
             except Exception as e:
-                retry_count += 1
-                delay = min(base_delay * (2 ** min(retry_count, 6)), 300)
-                logger.warning(f"Trade stream {chunk_id} disconnected (retry {retry_count}, {delay}s): {e}")
-                if self._running:
-                    await asyncio.sleep(delay)
+                logger.debug(f"Trade poll {chunk_id} error: {e}")
+            await asyncio.sleep(5)
 
     async def _handle_trade(self, data: dict):
         try:
@@ -419,60 +428,39 @@ class BinanceFuturesConnector:
             await asyncio.sleep(60)  # oldin 30s edi
 
     async def _stream_mark_price(self):
-        url = f"{BINANCE_FUTURES_WS}?streams=!markPrice@arr@1s"
-        retry_count = 0
-        base_delay = settings.ws_reconnect_delay
+        """
+        WS REST poll fallback — WS ishlamasa REST dan narx oladi.
+        """
+        url = f"{BINANCE_FUTURES_REST}/fapi/v1/ticker/price"
+        poll_count = 0
 
         while self._running:
             try:
-                logger.info(f"🔌 MarkPrice connecting to: {url[:80]}...")
-                ws = await self._session.ws_connect(
-                    url,
-                    heartbeat=20,
-                    max_msg_size=10 * 1024 * 1024
-                )
-                retry_count = 0
-                msg_count = 0
-                logger.info("🔌 Mark price stream connected — waiting for data...")
-                async for msg in ws:
-                    if msg.type == aiohttp.WSMsgType.TEXT:
-                        if not self._running:
-                            break
-                        data = orjson.loads(msg.data)
-                        msg_count += 1
-                        if msg_count <= 5:
-                            logger.info(f"📩 MarkPrice MSG #{msg_count}: {len(msg.data)} bytes")
-                        try:
-                            await state_manager.increment_stat("ws_messages")
-                        except Exception as e:
-                            if msg_count <= 3:
-                                logger.warning(f"Counter inc failed: {e}")
-                        stream_data = data.get("data", [])
-                        for item in stream_data:
-                            if item.get("e") == "markPriceUpdate":
-                                symbol = item["s"]
-                                price = float(item["p"])
-                                await state_manager.set_ticker(
-                                    "binance", symbol,
-                                    {"price": price, "ts": item["T"]}
-                                )
-                                price_tracker.update_price(symbol, price)
-                    elif msg.type == aiohttp.WSMsgType.ERROR:
-                        logger.error(f"MarkPrice WS error: {ws.exception()}")
-                        break
-                    elif msg.type == aiohttp.WSMsgType.CLOSED:
-                        logger.warning("MarkPrice WS closed by server")
-                        break
+                async with self._session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        poll_count += 1
+                        if poll_count <= 3:
+                            logger.info(f"📩 MarkPrice REST poll #{poll_count}: {len(data)} symbols")
+                        for item in data:
+                            symbol = item["s"]
+                            price = float(item["p"])
+                            try:
+                                await state_manager.increment_stat("ws_messages")
+                            except Exception:
+                                pass
+                            await state_manager.set_ticker(
+                                "binance", symbol,
+                                {"price": price, "ts": time.time() * 1000}
+                            )
+                            price_tracker.update_price(symbol, price)
+                    elif resp.status == 429:
+                        await asyncio.sleep(30)
                     else:
-                        logger.info(f"MarkPrice WS msg type: {msg.type}")
-                await ws.close()
-
+                        logger.warning(f"MarkPrice REST poll failed: HTTP {resp.status}")
             except Exception as e:
-                retry_count += 1
-                delay = min(base_delay * (2 ** min(retry_count, 6)), 300)
-                logger.warning(f"Mark price stream disconnected (retry {retry_count}, {delay}s): {e}")
-                if self._running:
-                    await asyncio.sleep(delay)
+                logger.debug(f"MarkPrice poll error: {e}")
+            await asyncio.sleep(3)
 
     async def get_orderbook(self, symbol: str, limit: int = 50) -> Optional[dict]:
         """Fetch order book snapshot via REST"""
