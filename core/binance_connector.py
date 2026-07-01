@@ -211,7 +211,7 @@ class BinanceFuturesConnector:
             logger.debug(f"Liquidation parse error: {e}")
 
     async def _stream_trades_chunked(self):
-        """Stream aggTrades for ALL symbols in 10 chunks."""
+        """Stream aggTrades for ALL symbols — sequential chunks, not parallel."""
         top_symbols = self.symbols
         chunk_size = 53
         chunks = [
@@ -219,11 +219,11 @@ class BinanceFuturesConnector:
             for i in range(0, len(top_symbols), chunk_size)
         ]
 
-        tasks = [
-            asyncio.create_task(self._stream_trades_chunk(chunk, idx))
-            for idx, chunk in enumerate(chunks)
-        ]
-        await asyncio.gather(*tasks, return_exceptions=True)
+        while self._running:
+            for idx, chunk in enumerate(chunks):
+                if not self._running:
+                    break
+                await self._stream_trades_chunk(chunk, idx)
 
     async def _stream_trades_chunk(self, symbols: list[str], chunk_id: int):
         """
@@ -234,7 +234,7 @@ class BinanceFuturesConnector:
 
         while self._running:
             try:
-                for symbol in symbols[:10]:
+                for symbol in symbols:
                     if not self._running:
                         break
                     try:
