@@ -425,40 +425,47 @@ class BinanceFuturesConnector:
 
         while self._running:
             try:
-                async with self._session.ws_connect(
+                logger.info(f"🔌 MarkPrice connecting to: {url[:80]}...")
+                ws = await self._session.ws_connect(
                     url,
                     heartbeat=20,
-                    timeout=30,
                     max_msg_size=10 * 1024 * 1024
-                ) as ws:
-                    retry_count = 0
-                    msg_count = 0
-                    logger.info("🔌 Mark price stream connected")
-                    async for msg in ws:
-                        if msg.type == aiohttp.WSMsgType.TEXT:
-                            if not self._running:
-                                break
-                            data = orjson.loads(msg.data)
-                            msg_count += 1
-                            if msg_count <= 3:
-                                logger.info(f"📩 MarkPrice MSG #{msg_count}: {len(msg.data)} bytes")
-                            try:
-                                await state_manager.increment_stat("ws_messages")
-                            except Exception as e:
-                                if msg_count <= 3:
-                                    logger.warning(f"Counter inc failed: {e}")
-                            stream_data = data.get("data", [])
-                            for item in stream_data:
-                                if item.get("e") == "markPriceUpdate":
-                                    symbol = item["s"]
-                                    price = float(item["p"])
-                                    await state_manager.set_ticker(
-                                        "binance", symbol,
-                                        {"price": price, "ts": item["T"]}
-                                    )
-                                    price_tracker.update_price(symbol, price)
-                        elif msg.type in (aiohttp.WSMsgType.ERROR, aiohttp.WSMsgType.CLOSED):
+                )
+                retry_count = 0
+                msg_count = 0
+                logger.info("🔌 Mark price stream connected — waiting for data...")
+                async for msg in ws:
+                    if msg.type == aiohttp.WSMsgType.TEXT:
+                        if not self._running:
                             break
+                        data = orjson.loads(msg.data)
+                        msg_count += 1
+                        if msg_count <= 5:
+                            logger.info(f"📩 MarkPrice MSG #{msg_count}: {len(msg.data)} bytes")
+                        try:
+                            await state_manager.increment_stat("ws_messages")
+                        except Exception as e:
+                            if msg_count <= 3:
+                                logger.warning(f"Counter inc failed: {e}")
+                        stream_data = data.get("data", [])
+                        for item in stream_data:
+                            if item.get("e") == "markPriceUpdate":
+                                symbol = item["s"]
+                                price = float(item["p"])
+                                await state_manager.set_ticker(
+                                    "binance", symbol,
+                                    {"price": price, "ts": item["T"]}
+                                )
+                                price_tracker.update_price(symbol, price)
+                    elif msg.type == aiohttp.WSMsgType.ERROR:
+                        logger.error(f"MarkPrice WS error: {ws.exception()}")
+                        break
+                    elif msg.type == aiohttp.WSMsgType.CLOSED:
+                        logger.warning("MarkPrice WS closed by server")
+                        break
+                    else:
+                        logger.info(f"MarkPrice WS msg type: {msg.type}")
+                await ws.close()
 
             except Exception as e:
                 retry_count += 1
