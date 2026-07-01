@@ -3,6 +3,9 @@ __pycache__
 .git
 .gitignore
 *.md
-data/state.db
-data/market_data.db
 .env
+data/state.db
+data/bot_err.log
+data/bot_out.log
+check_dbs.py
+check_db.py
