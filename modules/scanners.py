@@ -136,8 +136,8 @@ class WhaleScanner:
                     is_big_coin = symbol in ("BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT")
                     min_usdt = 50_000 if is_big_coin else 30_000
 
-                    # 5% dan kichik bo'lsa — chiqarmaymiz
-                    if vol_pct < 5.0:
+                    # 5% dan kichik VA katta USDT ham bo'lmasa — chiqarmaymiz
+                    if vol_pct < 5.0 and total < min_usdt:
                         continue
                     # Hajm 0 yoki manfiy bo'lsa — chiqarmaymiz
                     if volume_24h <= 0:

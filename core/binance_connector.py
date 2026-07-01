@@ -154,12 +154,15 @@ class BinanceFuturesConnector:
                     if resp.status == 200:
                         data = await resp.json()
                         retry_count = 0
+                        new_liqs = 0
                         for order in data:
                             key = f"{order['symbol']}_{order['time']}"
                             if key not in last_seen:
                                 last_seen[key] = True
                                 await self._handle_liquidation({"data": {"o": order, "e": "forceOrder"}})
-                                await state_manager.increment_stat("ws_messages")
+                                new_liqs += 1
+                        if new_liqs > 0:
+                            await state_manager.increment_stat("ws_messages")
                         if len(last_seen) > 500:
                             keys = list(last_seen.keys())[-200:]
                             last_seen = {k: True for k in keys}
@@ -247,10 +250,13 @@ class BinanceFuturesConnector:
                             ) as resp:
                                 if resp.status == 200:
                                     trades = await resp.json()
+                                    new_trades = 0
                                     for t in trades:
                                         if t["T"] > (time.time() - 60) * 1000:
-                                            await state_manager.increment_stat("ws_messages")
                                             await self._handle_trade({"data": t, "e": "aggTrade"})
+                                            new_trades += 1
+                                    if new_trades > 0:
+                                        await state_manager.increment_stat("ws_messages")
                                     seen_ids[symbol] = t.get("a", 0)
                                 elif resp.status == 429:
                                     await asyncio.sleep(30)
@@ -315,7 +321,7 @@ class BinanceFuturesConnector:
 
     async def _poll_open_interest(self):
         """Poll OI for all symbols every 60 seconds via REST"""
-        await asyncio.sleep(300)  # Bootstrap tugashini kutish (5 daqiqa)
+        await asyncio.sleep(120)  # 2 daqiqa kutish — bootstrap + price tracker tayyor bo'lsin
         while self._running:
             try:
                 tasks = [
@@ -451,13 +457,10 @@ class BinanceFuturesConnector:
                         poll_count += 1
                         if poll_count <= 3:
                             logger.info(f"📩 MarkPrice REST poll #{poll_count}: {len(data)} symbols")
+                        await state_manager.increment_stat("ws_messages")
                         for item in data:
                             symbol = item["s"]
                             price = float(item["p"])
-                            try:
-                                await state_manager.increment_stat("ws_messages")
-                            except Exception:
-                                pass
                             await state_manager.set_ticker(
                                 "binance", symbol,
                                 {"price": price, "ts": time.time() * 1000}

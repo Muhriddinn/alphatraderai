@@ -92,12 +92,14 @@ class StateManager:
                 flushed = True
             except Exception as e:
                 logger.debug(f"SQLite flush error: {e}")
-        # Always commit counter increments
-        try:
-            await self._db.commit()
-            flushed = True
-        except Exception as e:
-            logger.debug(f"SQLite commit error: {e}")
+        # Only commit if counter was incremented
+        if self._counter_dirty:
+            try:
+                await self._db.commit()
+                self._counter_dirty = False
+                flushed = True
+            except Exception as e:
+                logger.debug(f"SQLite commit error: {e}")
 
     def _key(self, exchange, symbol, data_type):
         return f"crypto:{exchange}:{symbol}:{data_type}"
@@ -206,8 +208,7 @@ class StateManager:
                 "INSERT INTO counters(name, value) VALUES(?,?) ON CONFLICT(name) DO UPDATE SET value=value+?",
                 (name, amount, amount)
             )
-            await self._db.commit()
-            self._counter_dirty = False
+            self._counter_dirty = True
         except Exception as e:
             logger.debug(f"Counter inc error ({name}): {e}")
 
