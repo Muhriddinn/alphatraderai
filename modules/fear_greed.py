@@ -34,6 +34,7 @@ class FearGreedIndex:
         logger.info("🔴 Fear & Greed Index to'xtatildi")
 
     async def _loop(self):
+        await asyncio.sleep(60)
         while self._running:
             try:
                 await self._fetch()

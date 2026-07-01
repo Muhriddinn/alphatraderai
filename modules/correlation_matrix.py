@@ -37,6 +37,7 @@ class CorrelationMatrix:
         logger.info("🔴 Correlation Matrix to'xtatildi")
 
     async def _loop(self):
+        await asyncio.sleep(60)
         while self._running:
             try:
                 await self._fetch_all()

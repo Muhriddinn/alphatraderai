@@ -230,6 +230,17 @@ class CryptoMonitorApp:
         await init_db()
         await state_manager.connect()
 
+        # 1-QADAM: Telegram bot
+        asyncio.create_task(bot.start())
+
+        # 2-QADAM: Connector birinchi — symbols topadi, WS ulaydi
+        await self.connector.start()
+
+        # 3-QADAM: KUTISH — bootstrap va WS o'rnashsin (5 daqiqa)
+        logger.info("⏳ 5 daqiqa kutish — bootstrap va WS o'rnashsin...")
+        await asyncio.sleep(300)
+
+        # 4-QADAM: Scannerlar (REST kam ishlatadi)
         await self.volume_scanner.start()
         await self.oi_scanner.start()
         await self.liq_scanner.start()
@@ -241,33 +252,34 @@ class CryptoMonitorApp:
         await self.price_change_scanner.start()
         await cvd_tracker.start()
         await self.listing_detector.start()
-        asyncio.create_task(bot.start())
 
-        # YANGI MODULLAR
-        await self.ob_tracker.start()          # OB Wall Tracker
-        await self.digest_scheduler.start()    # H1 + H4 hisobot
-
-        # 7 TA YANGI MODULE (random delay bilan — bir vaqtda poll qilmaslik uchun)
+        # 5-QADAM: REST module-lar (har biri orasida 60+ soniya)
         import random as _rnd
+        await self.ob_tracker.start()
+        await asyncio.sleep(_rnd.uniform(30, 60))
+
+        await self.digest_scheduler.start()
+        await asyncio.sleep(_rnd.uniform(60, 120))
+
         await fear_greed_index.start()
-        await asyncio.sleep(_rnd.uniform(30, 60))
+        await asyncio.sleep(_rnd.uniform(60, 120))
         await long_short_ratio.start()
-        await asyncio.sleep(_rnd.uniform(30, 60))
+        await asyncio.sleep(_rnd.uniform(60, 120))
         await funding_rate_history.start()
-        await asyncio.sleep(_rnd.uniform(30, 60))
+        await asyncio.sleep(_rnd.uniform(60, 120))
         await liquidation_heatmap.start()
-        await asyncio.sleep(_rnd.uniform(30, 60))
+        await asyncio.sleep(_rnd.uniform(60, 120))
         await correlation_matrix.start()
-        await asyncio.sleep(_rnd.uniform(30, 60))
+        await asyncio.sleep(_rnd.uniform(60, 120))
         await volume_profile.start()
-        await asyncio.sleep(_rnd.uniform(30, 60))
+        await asyncio.sleep(_rnd.uniform(60, 120))
         await top_trader_sentiment.start()
 
         # ML PREDICTION
         await data_collector.start()
-        await asyncio.sleep(_rnd.uniform(15, 30))
+        await asyncio.sleep(_rnd.uniform(30, 60))
         await prediction_engine.start()
-        await asyncio.sleep(_rnd.uniform(15, 30))
+        await asyncio.sleep(_rnd.uniform(30, 60))
         await bookmap_engine.start()
         await pre_signal_detector.start()
 
@@ -281,7 +293,6 @@ class CryptoMonitorApp:
         from signal_tracker import signal_tracker
         signal_tracker.load_from_file()
 
-        await self.connector.start()           # Connector oxirida (symbollarni beradi)
         await self.top_report.start()
 
         # Data Seeder — tarixiy ma'lumotlarni yuklaydi (CVD, Volume, Liq)
