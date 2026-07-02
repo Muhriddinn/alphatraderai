@@ -201,6 +201,7 @@ class WhaleEvent:
     token_qty: float = 0  # Masalan: 30.28M DOGE
     volume_24h: float = 0  # 24h hajm USDT
     volume_pct_of_24h: float = 0  # 24h ga nisbati %
+    last_price: float = 0  # Hozirgi narx
 
     @property
     def score(self) -> float:

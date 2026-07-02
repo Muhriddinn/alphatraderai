@@ -637,7 +637,15 @@ class AlertEngine:
 
             lines = []
             lines.append(f"🎰 #{symbol_short} {dir_word} {emoji} {fmt(event.volume_usdt)} in {time_str} ({vol_pct:.0f}%) on {exchange_name}")
-            lines.append(f"P: {event.price_change_pct:+.2f}%")
+
+            actual_price = getattr(event, "last_price", 0) or 0
+            price_chg = event.price_change_pct or 0
+            if actual_price > 0:
+                price_arrow = "⬆️" if price_chg > 0 else "⬇️" if price_chg < 0 else "➡️"
+                lines.append(f"P: {actual_price:.6g} {price_arrow} ({price_chg:+.2f}%)")
+            else:
+                lines.append(f"P: {price_chg:+.2f}%")
+
             lines.append(f"Vol 24h: {fmt(vol_24h) if vol_24h > 0 else '—'}")
             lines.append("")
 

@@ -190,6 +190,7 @@ class WhaleScanner:
                         start_time=datetime.utcfromtimestamp(oldest),
                         duration_seconds=elapsed,
                         order_count=len(window_trades),
+                        last_price=last_price,
                     )
                     event.price_change_pct = price_change_pct
                     event.buy_volume = total_buy
