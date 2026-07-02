@@ -132,12 +132,26 @@ class WhaleScanner:
                     if total > 50_000:
                         logger.debug(f"🐋 {symbol} {win_label}: total=${total:,.0f} buy=${total_buy:,.0f} sell=${total_sell:,.0f}")
 
-                    # CEXTrack format: 2%+ 24h hajm YOKI katta USDT
-                    is_big_coin = symbol in ("BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT")
-                    min_usdt = 30_000 if is_big_coin else 10_000
+                    # Dynamic threshold — har coin uchun alohida
+                    # Katta coinlarda kichik % ham muhim, kichik coinlarda katta % kerak
+                    if volume_24h > 1_000_000_000:
+                        min_vol_pct = 0.01   # BTC/ETH kabi kattalar: $100K+ tranzaksiya
+                        min_usdt = 100_000
+                    elif volume_24h > 100_000_000:
+                        min_vol_pct = 0.1    # O'rtacha-katta: $100K+ tranzaksiya
+                        min_usdt = 50_000
+                    elif volume_24h > 10_000_000:
+                        min_vol_pct = 0.5    # O'rtacha: $50K+ tranzaksiya
+                        min_usdt = 20_000
+                    elif volume_24h > 1_000_000:
+                        min_vol_pct = 1.0    # Kichik: $10K+ tranzaksiya
+                        min_usdt = 10_000
+                    else:
+                        min_vol_pct = 2.0    # Juda kichik: $2K+ tranzaksiya
+                        min_usdt = 2_000
 
-                    # 2% dan kichik VA katta USDT ham bo'lmasa — chiqarmaymiz
-                    if vol_pct < 2.0 and total < min_usdt:
+                    # vol_pct YOKI min_usdt yetarli bo'lmasa — chiqarmaymiz
+                    if vol_pct < min_vol_pct and total < min_usdt:
                         continue
                     # Hajm 0 yoki manfiy bo'lsa — chiqarmaymiz
                     if volume_24h <= 0:
